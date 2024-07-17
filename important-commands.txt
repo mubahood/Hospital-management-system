@@ -1,0 +1,9 @@
+php artisan migrate
+
+php artisan make:migration create_courses_table
+
+php artisan make:migration add_unit_price_to_medical_services --table=medical_services
+ 
+php artisan admin:make PaymentRecordController --model=App\\Models\\PaymentRecord
+ 
+php artisan make:model PaymentRecord -m

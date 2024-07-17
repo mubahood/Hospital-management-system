@@ -1,0 +1,27 @@
+.bagde {
+    background-color: rgb(229, 229, 229);
+    padding: 2px 5px 2px 5px;
+    border-radius: 5px;
+}
+
+.bagde-danger {
+    background-color: red;
+    color: white;
+}
+
+.bagde-success {
+    background-color: green;
+    color: white;
+}
+
+.bagde-warning {
+    background-color: yellow;
+    color: black;
+}
+
+@media (min-width:1200px) {
+    .mx-md-5 {
+        margin-right: 12%!important;
+        margin-left: 12%!important;
+    } 
+}
