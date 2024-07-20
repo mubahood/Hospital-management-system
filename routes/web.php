@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\MainController;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Models\Consultation;
 use App\Models\Gen;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -17,6 +18,20 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+
+Route::get('print-invoice', function () {
+    $id = $_GET['id'];
+    $item = Consultation::find($id);
+    if ($item == null) {
+        die('item not found');
+    }
+    $pdf = App::make('dompdf.wrapper');
+    $pdf->set_option('enable_html5_parser', TRUE);
+    $pdf->loadHTML(view('invoice', [
+        'item' => $item,
+    ])->render());
+    return $pdf->stream('test.pdf');
+});
 
 Route::get('app', function () {
     //return url('taskease-v1.apk');

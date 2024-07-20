@@ -30,6 +30,12 @@ class BillingController extends AdminController
         $grid = new Grid(new Consultation());
 
         $grid->column('id', __('Id'));
+        $grid->column('print-invoice', __('Invoice'))
+            ->display(function ($id) {
+                $url = url('print-invoice?id=' . $id);
+                return '<a href="' . $url . '" target="_blank">Preview Invoice</a>';
+            });
+
         $grid->column('created_at', __('Created at'));
         $grid->column('updated_at', __('Updated at'));
         $grid->column('patient_id', __('Patient id'));

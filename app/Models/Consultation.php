@@ -75,4 +75,16 @@ class Consultation extends Model
     {
         return $this->hasMany(BillingItem::class);
     }
+
+    //belongs to patient_id
+    public function patient()
+    {
+        return $this->belongsTo(User::class, 'patient_id');
+    }
+
+    //belongs to receptionist_id
+    public function receptionist()
+    {
+        return $this->belongsTo(User::class, 'receptionist_id');
+    } 
 }

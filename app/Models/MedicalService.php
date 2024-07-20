@@ -32,6 +32,7 @@ class MedicalService extends Model
         'quantity',
         'unit_price',
     ];
+    
 
     public function consultation()
     {
@@ -43,4 +44,9 @@ class MedicalService extends Model
     {
         return $this->hasMany(MedicalServiceItem::class);
     }
+    //assigned_to
+    public function assigned_to()
+    {
+        return $this->belongsTo(User::class, 'assigned_to_id');
+    } 
 }

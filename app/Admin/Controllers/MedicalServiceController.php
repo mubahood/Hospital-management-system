@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Models\MedicalService;
 use App\Models\StockItem;
+use App\Models\Utils;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
@@ -26,20 +27,65 @@ class MedicalServiceController extends AdminController
     protected function grid()
     {
         $grid = new Grid(new MedicalService());
+        $grid->disableBatchActions();
+        $grid->model()->where([
+            'status' => 'Pending',
+        ])
+            ->orWhere([
+                'status' => 'Ongoing',
+            ])
+            ->orderBy('id', 'desc');
+        $grid->column('consultation_id', __('Consultation'))
+            ->display(function ($id) {
+                if ($this->consultation == null) {
+                    return 'N/A';
+                }
+                return $this->consultation->consultation_number;
+            })->sortable();
+        $grid->column('patient_id', __('Patient'))
+            ->display(function ($id) {
+                if ($this->consultation == null) {
+                    return 'N/A';
+                }
+                if ($this->consultation->patient == null) {
+                    return 'N/A';
+                }
+                return $this->consultation->patient->name;
+            })->sortable();
+        $grid->column('assigned_to_id', __('Specialist/Doctor'))
+            ->display(function ($id) {
+                if ($this->assigned_to == null) {
+                    return 'N/A';
+                }
+                return $this->assigned_to->name;
+            })->sortable();
+        $grid->column('type', __('Service'))
+            ->sortable();
+        $grid->column('remarks', __('Remarks'))->hide();
+        $grid->column('instruction', __('Instruction'))->sortable();
+        $grid->column('specialist_outcome', __('Specialist outcome'))
+            ->display(function ($outcome) {
+                if ($outcome == null || $outcome == '') {
+                    return '-';
+                }
+                return $outcome;
+            })->sortable();
 
-        $grid->column('id', __('Id'));
-        $grid->column('created_at', __('Created at'));
-        $grid->column('updated_at', __('Updated at'));
-        $grid->column('consultation_id', __('Consultation id'));
-        $grid->column('receptionist_id', __('Receptionist id'));
-        $grid->column('patient_id', __('Patient id'));
-        $grid->column('assigned_to_id', __('Assigned to id'));
-        $grid->column('type', __('Type'));
-        $grid->column('status', __('Status'));
-        $grid->column('remarks', __('Remarks'));
-        $grid->column('instruction', __('Instruction'));
-        $grid->column('specialist_outcome', __('Specialist outcome'));
-
+        $grid->column('created_at', __('Created'))
+            ->display(function ($date) {
+                return Utils::my_date_time($date);
+            })->sortable();
+        $grid->column('status', __('Status'))
+            ->filter([
+                'Pending' => 'Pending',
+                'Ongoing' => 'Ongoing',
+            ])
+            ->label([
+                'Pending' => 'warning',
+                'Ongoing' => 'primary',
+                'Completed' => 'success',
+            ])
+            ->sortable();
         return $grid;
     }
 
@@ -85,7 +131,6 @@ class MedicalServiceController extends AdminController
             ->options([
                 'Pending' => 'Pending',
                 'Ongoing' => 'Ongoing',
-                'Billing' => 'Ready for Billing',
                 'Cancelled' => 'Cancelled',
                 'Completed' => 'Completed',
             ])->rules('required');
