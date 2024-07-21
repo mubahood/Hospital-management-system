@@ -627,6 +627,8 @@ class ComposerStaticInitda89eef54c810448a827ed04bb3da82f
         'App\\Admin\\Controllers\\PatientController' => __DIR__ . '/../..' . '/app/Admin/Controllers/PatientController.php',
         'App\\Admin\\Controllers\\PatientRecordController' => __DIR__ . '/../..' . '/app/Admin/Controllers/PatientRecordController.php',
         'App\\Admin\\Controllers\\PatientsController' => __DIR__ . '/../..' . '/app/Admin/Controllers/PatientsController.php',
+        'App\\Admin\\Controllers\\PaymentRecordController' => __DIR__ . '/../..' . '/app/Admin/Controllers/PaymentRecordController.php',
+        'App\\Admin\\Controllers\\ProgressMonitoringController' => __DIR__ . '/../..' . '/app/Admin/Controllers/ProgressMonitoringController.php',
         'App\\Admin\\Controllers\\ProjectController' => __DIR__ . '/../..' . '/app/Admin/Controllers/ProjectController.php',
         'App\\Admin\\Controllers\\ProjectSectionController' => __DIR__ . '/../..' . '/app/Admin/Controllers/ProjectSectionController.php',
         'App\\Admin\\Controllers\\ReportModelController' => __DIR__ . '/../..' . '/app/Admin/Controllers/ReportModelController.php',

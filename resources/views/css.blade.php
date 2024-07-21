@@ -1,6 +1,11 @@
-<style>
+<?php 
+$color = "#19AAA7";
+if(isset($company)){
+    $color = $company->color;
+}
+?><style>
     :root {
-    --blue: #007bff;
+    --blue: {{ $color }};
     --indigo: #6610f2;
     --purple: #6f42c1;
     --pink: #e83e8c;
@@ -13,7 +18,7 @@
     --white: #fff;
     --gray: #6c757d;
     --gray-dark: #343a40;
-    --primary: #007bff;
+    --primary: {{ $color }};
     --secondary: #6c757d;
     --success: #28a745;
     --info: #17a2b8;
@@ -171,7 +176,7 @@ sup {
 }
 
 a {
-    color: #007bff;
+    color: {{ $color }};
     text-decoration: none;
     background-color: transparent;
     -webkit-text-decoration-skip: objects
@@ -2632,8 +2637,8 @@ fieldset:disabled a.btn {
 
 .btn-primary {
     color: #fff;
-    background-color: #007bff;
-    border-color: #007bff
+    background-color: {{ $color }};
+    border-color: {{ $color }}
 }
 
 .btn-primary:hover {
@@ -2650,8 +2655,8 @@ fieldset:disabled a.btn {
 .btn-primary.disabled,
 .btn-primary:disabled {
     color: #fff;
-    background-color: #007bff;
-    border-color: #007bff
+    background-color: {{ $color }};
+    border-color: {{ $color }}
 }
 
 .btn-primary:not(:disabled):not(.disabled).active,
@@ -2935,16 +2940,16 @@ fieldset:disabled a.btn {
 }
 
 .btn-outline-primary {
-    color: #007bff;
+    color: {{ $color }};
     background-color: transparent;
     background-image: none;
-    border-color: #007bff
+    border-color: {{ $color }}
 }
 
 .btn-outline-primary:hover {
     color: #fff;
-    background-color: #007bff;
-    border-color: #007bff
+    background-color: {{ $color }};
+    border-color: {{ $color }}
 }
 
 .btn-outline-primary.focus,
@@ -2954,7 +2959,7 @@ fieldset:disabled a.btn {
 
 .btn-outline-primary.disabled,
 .btn-outline-primary:disabled {
-    color: #007bff;
+    color: {{ $color }};
     background-color: transparent
 }
 
@@ -2962,8 +2967,8 @@ fieldset:disabled a.btn {
 .btn-outline-primary:not(:disabled):not(.disabled):active,
 .show>.btn-outline-primary.dropdown-toggle {
     color: #fff;
-    background-color: #007bff;
-    border-color: #007bff
+    background-color: {{ $color }};
+    border-color: {{ $color }}
 }
 
 .btn-outline-primary:not(:disabled):not(.disabled).active:focus,
@@ -3240,7 +3245,7 @@ fieldset:disabled a.btn {
 
 .btn-link {
     font-weight: 400;
-    color: #007bff;
+    color: {{ $color }};
     background-color: transparent
 }
 
@@ -3484,7 +3489,7 @@ tbody.collapse.show {
 .dropdown-item:active {
     color: #fff;
     text-decoration: none;
-    background-color: #007bff
+    background-color: {{ $color }}
 }
 
 .dropdown-item.disabled,
@@ -3826,7 +3831,7 @@ tbody.collapse.show {
 
 .custom-control-input:checked~.custom-control-label::before {
     color: #fff;
-    background-color: #007bff
+    background-color: {{ $color }}
 }
 
 .custom-control-input:focus~.custom-control-label::before {
@@ -3884,11 +3889,11 @@ tbody.collapse.show {
 }
 
 .custom-checkbox .custom-control-input:checked~.custom-control-label::before {
-    background-color: #007bff
+    background-color: {{ $color }}
 }
 
 .custom-checkbox .custom-control-input:indeterminate~.custom-control-label::before {
-    background-color: #007bff
+    background-color: {{ $color }}
 }
 
 .custom-checkbox .custom-control-input:disabled:checked~.custom-control-label::before {
@@ -3904,7 +3909,7 @@ tbody.collapse.show {
 }
 
 .custom-radio .custom-control-input:checked~.custom-control-label::before {
-    background-color: #007bff
+    background-color: {{ $color }}
 }
 
 .custom-radio .custom-control-input:disabled:checked~.custom-control-label::before {
@@ -4084,7 +4089,7 @@ tbody.collapse.show {
 .nav-pills .nav-link.active,
 .nav-pills .show>.nav-link {
     color: #fff;
-    background-color: #007bff
+    background-color: {{ $color }}
 }
 
 .nav-fill .nav-item {
@@ -4912,7 +4917,7 @@ tbody.collapse.show {
     padding: .5rem .75rem;
     margin-left: -1px;
     line-height: 1.25;
-    color: #007bff;
+    color: {{ $color }};
     background-color: #fff;
     border: 1px solid #000000
 }
@@ -4948,8 +4953,8 @@ tbody.collapse.show {
 .page-item.active .page-link {
     z-index: 1;
     color: #fff;
-    background-color: #007bff;
-    border-color: #007bff
+    background-color: {{ $color }};
+    border-color: {{ $color }}
 }
 
 .page-item.disabled .page-link {
@@ -5021,7 +5026,7 @@ tbody.collapse.show {
 
 .badge-primary {
     color: #fff;
-    background-color: #007bff
+    background-color: {{ $color }}
 }
 
 .badge-primary[href]:focus,
@@ -5316,7 +5321,7 @@ tbody.collapse.show {
     justify-content: center;
     color: #fff;
     text-align: center;
-    background-color: #007bff;
+    background-color: {{ $color }};
     transition: width .6s ease
 }
 
@@ -5410,8 +5415,8 @@ tbody.collapse.show {
 .list-group-item.active {
     z-index: 2;
     color: #fff;
-    background-color: #007bff;
-    border-color: #007bff
+    background-color: {{ $color }};
+    border-color: {{ $color }}
 }
 
 .list-group-flush .list-group-item {
@@ -6304,7 +6309,7 @@ button.close {
 }
 
 .bg-primary {
-    background-color: #007bff!important
+    background-color: {{ $color }}!important
 }
 
 a.bg-primary:focus,
@@ -6440,7 +6445,7 @@ button.bg-dark:hover {
 }
 
 .border-primary {
-    border-color: #007bff!important
+    border-color: {{ $color }}!important
 }
 
 .border-secondary {
@@ -9062,7 +9067,7 @@ button.bg-dark:hover {
 }
 
 .text-primary {
-    color: #007bff!important
+    color: {{ $color }}!important
 }
 
 a.text-primary:focus,

@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\MainController;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Models\Company;
 use App\Models\Consultation;
 use App\Models\Gen;
 use App\Models\Meeting;
@@ -19,16 +20,39 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 
+Route::get('regenerate-invoice', function () {
+    $id = $_GET['id'];
+    $item = Consultation::find($id);
+    if ($item == null) {
+        die('item not found');
+    }
+    $item->process_invoice();
+    $url = url('storage/'.$item->invoice_pdf);
+
+    return redirect($url);
+    die($url);
+    $company = Company::find(1);
+    $pdf = App::make('dompdf.wrapper');
+    $pdf->set_option('enable_html5_parser', TRUE);
+    $pdf->loadHTML(view('invoice', [
+        'item' => $item,
+        'company' => $company,
+    ])->render());
+    return $pdf->stream('test.pdf');
+});
+
 Route::get('print-invoice', function () {
     $id = $_GET['id'];
     $item = Consultation::find($id);
     if ($item == null) {
         die('item not found');
     }
+    $company = Company::find(1);
     $pdf = App::make('dompdf.wrapper');
     $pdf->set_option('enable_html5_parser', TRUE);
     $pdf->loadHTML(view('invoice', [
         'item' => $item,
+        'company' => $company,
     ])->render());
     return $pdf->stream('test.pdf');
 });

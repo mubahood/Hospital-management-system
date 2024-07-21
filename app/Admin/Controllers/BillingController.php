@@ -32,8 +32,13 @@ class BillingController extends AdminController
         $grid->column('id', __('Id'));
         $grid->column('print-invoice', __('Invoice'))
             ->display(function ($id) {
-                $url = url('print-invoice?id=' . $id);
+                $url = url('print-invoice?id=' . $this->id);
                 return '<a href="' . $url . '" target="_blank">Preview Invoice</a>';
+            });
+        $grid->column('generate-invoice', __('Re-Generate Invoice'))
+            ->display(function ($id) {
+                $url = url('regenerate-invoice?id=' . $this->id);
+                return '<a href="' . $url . '" target="_blank">Re-Generate Invoice</a>';
             });
 
         $grid->column('created_at', __('Created at'));

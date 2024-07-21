@@ -23,6 +23,8 @@ return array(
     'App\\Admin\\Controllers\\PatientController' => $baseDir . '/app/Admin/Controllers/PatientController.php',
     'App\\Admin\\Controllers\\PatientRecordController' => $baseDir . '/app/Admin/Controllers/PatientRecordController.php',
     'App\\Admin\\Controllers\\PatientsController' => $baseDir . '/app/Admin/Controllers/PatientsController.php',
+    'App\\Admin\\Controllers\\PaymentRecordController' => $baseDir . '/app/Admin/Controllers/PaymentRecordController.php',
+    'App\\Admin\\Controllers\\ProgressMonitoringController' => $baseDir . '/app/Admin/Controllers/ProgressMonitoringController.php',
     'App\\Admin\\Controllers\\ProjectController' => $baseDir . '/app/Admin/Controllers/ProjectController.php',
     'App\\Admin\\Controllers\\ProjectSectionController' => $baseDir . '/app/Admin/Controllers/ProjectSectionController.php',
     'App\\Admin\\Controllers\\ReportModelController' => $baseDir . '/app/Admin/Controllers/ReportModelController.php',

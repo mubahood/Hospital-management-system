@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Barryvdh\DomPDF\PDF;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 
 class Consultation extends Model
@@ -34,7 +36,8 @@ class Consultation extends Model
         $receptionist = User::find($model->receptionist_id);
         $loggedUser = Auth::user();
         if ($loggedUser == null) {
-            throw new \Exception('You are not logged in.');
+            $loggedUser = $patient;
+            //throw new \Exception('You are not logged in.');
         }
         if ($receptionist == null) {
             $model->receptionist_id = $loggedUser->id;
@@ -86,5 +89,100 @@ class Consultation extends Model
     public function receptionist()
     {
         return $this->belongsTo(User::class, 'receptionist_id');
-    } 
+    }
+
+    //detail getter
+    public function getDetailAttribute()
+    {
+        return 'this->patient->name . ' - ' . $this->patient->phone_number_1';
+    }
+
+    //price getter
+    public function getPriceAttribute()
+    {
+        return 90000;
+    }
+
+    public function process_invoice()
+    {
+        $medical_services = $this->medical_services;
+        $subtotal = 0;
+        foreach ($medical_services as $medical_service) {
+            $isFirst = true;
+            $medical_service->remarks = null;
+            $medical_service->total_price = 0;
+
+            foreach ($medical_service->medical_service_items as $medical_service_item) {
+                $stock_item = StockItem::find($medical_service_item->stock_item_id);
+                if ($stock_item == null) {
+                    throw new \Exception('Stock item not found. #' . $medical_service_item->stock_item_id);
+                }
+                $medical_service_item->remarks = $stock_item->name;
+                $medical_service_item->unit_price = $stock_item->sale_price;
+                $medical_service_item->total_price = ((float)($medical_service_item->quantity)) * ((float)($stock_item->sale_price));
+
+                if ($isFirst) {
+                    $isFirst = false;
+                    $medical_service->remarks = '<b>' . $medical_service_item->remarks . "</b><br><b>$stock_item->name</b>: " . (float)($medical_service_item->quantity) . " x " . number_format($stock_item->sale_price) . " = " . number_format($medical_service_item->total_price);
+                } else {
+                    $medical_service->remarks .= "<br><b>$stock_item->name</b>: " . (float)($medical_service_item->quantity) . " x " . number_format($stock_item->sale_price) . " = " . number_format($medical_service_item->total_price);
+                }
+                $medical_service_item->save();
+                $medical_service->total_price += $medical_service_item->total_price;
+            }
+            $medical_service->save();
+            $subtotal += $medical_service->total_price;
+        }
+
+        $medical_services = 0;
+        $discount = 0;
+        foreach ($this->billing_items as $billing_item) {
+            if ($billing_item->type == 'Discount') {
+                $discount += (float)($billing_item->price);
+            } else {
+                $medical_services += (float)($billing_item->price);
+            }
+        }
+        $this->fees_total = $medical_services;
+        $this->subtotal = $subtotal + $medical_services;
+        $this->discount = $discount;
+        $this->total_charges = $this->subtotal - $discount;
+        $this->save();
+
+        $total_paid  = PaymentRecord::where([
+            'consultation_id' => $this->id
+        ])->sum('amount_paid');
+
+        $this->total_due = $this->total_charges - $total_paid;
+        $this->total_paid = $total_paid;
+        //payemnt_status
+
+        if ($this->total_due <= 0) {
+            $this->payemnt_status = 'Paid';
+        } else {
+            $this->payemnt_status = 'Not Paid';
+        }
+        $this->invoice_processed = 'Yes';
+        //date time
+        $this->invoice_process_date = date('Y-m-d H:i:s');
+        $file_name = $this->consultation_number . '.pdf';
+        $file_path = public_path('storage/files/' . $file_name);
+        //check if file exists
+        if (file_exists($file_path)) {
+            unlink($file_path);
+        }
+        $this->invoice_pdf = 'files/' . $file_name;
+        $this->save();
+
+
+        $company = Company::find(1);
+        $pdf = App::make('dompdf.wrapper');
+        $pdf->set_option('enable_html5_parser', TRUE);
+        $pdf->loadHTML(view('invoice', [
+            'item' => $this,
+            'company' => $company,
+        ])->render());
+
+        $pdf->save($file_path);
+    }
 }
