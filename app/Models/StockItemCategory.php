@@ -33,5 +33,15 @@ class StockItemCategory extends Model
     //update_quantities
     public function update_quantities()
     {
+        $this->current_stock_quantity = 0;
+        $this->current_stock_value = 0;
+        $items = StockItem::where([
+            'stock_item_category_id' => $this->id,
+        ])->get();
+        foreach ($items as $item) {
+            $this->current_stock_quantity += $item->quantity;
+            $this->current_stock_value += $item->quantity * $item->unit_price;
+        }
+        $this->save();
     }
 }

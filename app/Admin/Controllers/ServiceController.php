@@ -29,7 +29,6 @@ class ServiceController extends AdminController
         $grid->model()->orderBy('name', 'asc');
         $grid->column('name', __('Name'))->sortable();
         $grid->column('description', __('Description'))->hide();
-        $grid->column('price', __('Price'))->sortable();
         $grid->column('status', __('Status'))
             ->label([
                 'Active' => 'success',
@@ -54,7 +53,6 @@ class ServiceController extends AdminController
         $show->field('updated_at', __('Updated at'));
         $show->field('name', __('Name'));
         $show->field('description', __('Description'));
-        $show->field('price', __('Price'));
         $show->field('status', __('Status'));
 
         return $show;
@@ -70,7 +68,7 @@ class ServiceController extends AdminController
         $form = new Form(new Service());
 
         $form->text('name', __('Name'))->rules('required');
-        $form->decimal('price', __('Price'))->rules('required');
+        $form->hidden('price', __('Price'))->default(0);
         $form->radio('status', __('Status'))
             ->options([
                 'Active' => 'Active',

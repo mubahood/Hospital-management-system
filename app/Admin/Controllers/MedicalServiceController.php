@@ -28,13 +28,13 @@ class MedicalServiceController extends AdminController
     {
         $grid = new Grid(new MedicalService());
         $grid->disableBatchActions();
-        $grid->model()->where([
-            'status' => 'Pending',
-        ])
-            ->orWhere([
-                'status' => 'Ongoing',
-            ])
-            ->orderBy('id', 'desc');
+
+        //where consultation.status = Ongoing
+        $grid->model()
+            ->join('consultations', 'consultations.id', '=', 'medical_services.consultation_id')
+            ->where('consultations.main_status', 'Ongoing')
+            ->orderBy('medical_services.created_at', 'desc');
+
         $grid->column('consultation_id', __('Consultation'))
             ->display(function ($id) {
                 if ($this->consultation == null) {

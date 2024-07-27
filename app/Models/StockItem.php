@@ -30,10 +30,18 @@ class StockItem extends Model
 
         //updated
         static::updated(function ($model) {
+            $cat = StockItemCategory::find($model->stock_item_category_id);
+            if ($cat != null) {
+                $cat->update_quantities();
+            }
         });
 
         //created
         static::created(function ($model) {
+            $cat = StockItemCategory::find($model->stock_item_category_id);
+            if ($cat != null) {
+                $cat->update_quantities();
+            }
         });
     }
 
@@ -78,4 +86,10 @@ class StockItem extends Model
         }
         return $options;
     }
+
+    //category
+    public function category()
+    {
+        return $this->belongsTo(StockItemCategory::class, 'stock_item_category_id');
+    } 
 }

@@ -14,6 +14,18 @@ class Utils extends Model
 {
     use HasFactory;
 
+    //pluralize word static function
+    public static function pluralize($word)
+    {
+        $last = $word[strlen($word) - 1];
+        if ($last == 'y') {
+            $word = substr($word, 0, -1) . 'ies';
+        } else {
+            $word .= 's';
+        }
+        return $word;
+    }
+
     //static short
     public static function short($text, $limit = 100)
     {
@@ -296,7 +308,7 @@ class Utils extends Model
             $ev['details'] = $details;
             $ev['start'] = Carbon::parse($event_date)->format('Y-m-d');
             $events[] = $ev;
-           /*  if($x == 19){
+            /*  if($x == 19){
                 die(json_encode($ev));
                 break;
             } */
@@ -917,7 +929,6 @@ class Utils extends Model
             $company->save();
         }
         $u = Admin::user();
-
     }
 
     public static function start_session()

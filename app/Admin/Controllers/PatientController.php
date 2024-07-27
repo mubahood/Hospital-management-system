@@ -230,9 +230,11 @@ class PatientController extends AdminController
                 /* card_number */
                 $form->text('card_number', 'Card number');
                 /* card_accepts_credit */
-                $form->radioCard('card_accepts_credit', 'Card accepts credit')->options(['Yes' => 'Yes', 'No' => 'No']);
+                $form->radioCard('card_accepts_credit', 'Card accepts credit')->options(['Yes' => 'Yes', 'No' => 'No'])
+                    ->when('Yes', function ($form) {
+                        $form->decimal('card_max_credit', 'Card credit limit')->rules('required');
+                    });
                 /* card_max_credit */
-                $form->text('card_max_credit', 'Card max credit');
                 /* card_expiry */
                 $form->date('card_expiry', 'Card expiry')->rules('required');
                 $form->radioCard('card_status', 'Card status')->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Deactive']);

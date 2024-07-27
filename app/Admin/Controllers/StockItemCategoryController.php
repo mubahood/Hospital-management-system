@@ -25,17 +25,20 @@ class StockItemCategoryController extends AdminController
     protected function grid()
     {
         $grid = new Grid(new StockItemCategory());
-
-        $grid->column('id', __('Id'));
-        $grid->column('created_at', __('Created at'));
-        $grid->column('updated_at', __('Updated at'));
-        $grid->column('name', __('Name'));
+        $grid->disableBatchActions();
+        $grid->quickSearch('name');
+        $grid->column('id', __('Id'))->sortable()->hide();
+        $grid->model()->orderBy('name', 'asc');
+        $grid->column('name', __('Name'))->sortable();
         $grid->column('description', __('Description'));
-        $grid->column('measuring_unit', __('Measuring unit'));
-        $grid->column('current_stock_value', __('Current stock value'));
-        $grid->column('current_stock_quantity', __('Current stock quantity'));
-        $grid->column('reorder_level', __('Reorder level'));
-        $grid->column('status', __('Status'));
+        $grid->column('measuring_unit', __('Measuring Unit'))->sortable();
+        $grid->column('current_stock_quantity', __('Current stock quantity'))->sortable();
+        $grid->column('current_stock_value', __('Current stock value'))->sortable();
+        $grid->column('reorder_level', __('Reorder level'))->hide();
+        $grid->column('status', __('Status'))->label([
+            'Active' => 'success',
+            'Inactive' => 'danger',
+        ])->sortable();
 
         return $grid;
     }

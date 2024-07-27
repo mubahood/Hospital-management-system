@@ -26,30 +26,74 @@ class StockItemController extends AdminController
     {
         $grid = new Grid(new StockItem());
 
-        $grid->column('id', __('Id'));
-        $grid->column('created_at', __('Created at'));
-        $grid->column('updated_at', __('Updated at'));
-        $grid->column('stock_item_category_id', __('Stock item category id'));
-        $grid->column('name', __('Name'));
-        $grid->column('original_quantity', __('Original quantity'));
-        $grid->column('current_quantity', __('Current quantity'));
-        $grid->column('current_stock_value', __('Current stock value'));
-        $grid->column('description', __('Description'));
-        $grid->column('current_stock_quantity', __('Current stock quantity'));
-        $grid->column('reorder_level', __('Reorder level'));
-        $grid->column('status', __('Status'));
-        $grid->column('measuring_unit', __('Measuring unit'));
-        $grid->column('purchase_price', __('Purchase price'));
-        $grid->column('sale_price', __('Sale price'));
-        $grid->column('barcode', __('Barcode'));
-        $grid->column('supplier', __('Supplier'));
-        $grid->column('supplier_contact', __('Supplier contact'));
-        $grid->column('supplier_address', __('Supplier address'));
-        $grid->column('supplier_email', __('Supplier email'));
-        $grid->column('supplier_phone', __('Supplier phone'));
-        $grid->column('type', __('Type'));
-        $grid->column('expire_date', __('Expire date'));
-        $grid->column('manufacture_date', __('Manufacture date'));
+        $grid->disableBatchActions();
+        $grid->model()->orderBy('name', 'asc');
+        $grid->quickSearch('name', 'barcode')->placeholder('Search by name or barcode');
+        $grid->column('id', __('Stock #ID'))->sortable();
+        $grid->column('name', __('Name'))->sortable();
+        $grid->column('created_at', __('Added'))
+            ->display(function ($date) {
+                return \App\Models\Utils::my_date($date);
+            })->sortable();
+        $grid->column('stock_item_category_id', __('Category'))
+            ->display(function ($id) {
+                if ($this->category == null) {
+                    return 'N/A';
+                }
+                return $this->category->name;
+            })->sortable();
+        $grid->column('original_quantity', __('Original Quantity'))
+            ->display(function ($qty) {
+                //if type is service, return N/A
+                if ($this->type == 'Service') {
+                    $unit = 'N/A';
+                }
+                //make $this->measuring_unit in plural if $qty > 1
+                $unit = $this->measuring_unit;
+                if ($qty > 1) {
+                    $unit = \App\Models\Utils::pluralize($unit);
+                }
+
+                return $qty . ' ' . $unit;
+            })->sortable();
+        $grid->column('current_quantity', __('Current Quantity'))
+            ->display(function ($qty) {
+                //if type is service, return N/A
+                if ($this->type == 'Service') {
+                    $unit = 'N/A';
+                }
+                //make $this->measuring_unit in plural if $qty > 1
+                $unit = $this->measuring_unit;
+                if ($qty > 1) {
+                    $unit = \App\Models\Utils::pluralize($unit);
+                }
+
+                return $qty . ' ' . $unit;
+            })->sortable();
+        $grid->column('description', __('Description'))->hide();
+        $grid->column('current_stock_quantity', __('Current stock quantity'))->hide();
+        $grid->column('reorder_level', __('Reorder level'))->hide();
+        $grid->column('status', __('Status'))->label([
+            'Active' => 'success',
+            'Inactive' => 'danger',
+        ])->sortable();
+        $grid->column('purchase_price', __('Purchase Price (UGX)'))
+            ->display(function ($price) {
+                return number_format($price, 2);
+            })->sortable();
+        $grid->column('sale_price', __('Sell Price (UGX)'))
+            ->display(function ($price) {
+                return number_format($price, 2);
+            })->sortable();
+        $grid->column('barcode', __('Barcode'))->hide();
+        $grid->column('supplier', __('Supplier'))->sortable();
+        $grid->column('supplier_contact', __('Supplier Contact'))->sortable();
+        $grid->column('supplier_address', __('Supplier address'))->hide();
+        $grid->column('supplier_email', __('Supplier email'))->hide();
+        $grid->column('supplier_phone', __('Supplier phone'))->hide();
+        $grid->column('type', __('Type'))->hide();
+        $grid->column('expire_date', __('Expiry Date'))->sortable();
+        $grid->column('manufacture_date', __('Manufacture date'))->hide();
 
         return $grid;
     }

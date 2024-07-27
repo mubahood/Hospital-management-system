@@ -174,7 +174,7 @@ class ConsultationController extends AdminController
         $form->tags('services_requested', __('Services Requested'))
             ->options(Service::all()->pluck('name', 'name')->toArray())
             ->rules('required');
-        $form->textarea('reason_for_consultation', __('Consultation Details'))->rules('required');
+        $form->quill('reason_for_consultation', __('Consultation Details'))->rules('required');
 
         $form->divider('Initial Health Check Details');
         $form->decimal('temperature', __('Temperature'));
