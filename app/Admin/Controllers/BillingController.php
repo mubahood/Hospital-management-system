@@ -2,9 +2,12 @@
 
 namespace App\Admin\Controllers;
 
+use App\Admin\Actions\Consultation\AddBillAction as ConsultationAddBillAction;
+use App\Admin\Actions\Consultation\ViewBillAction;
 use App\Models\Consultation;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\Utils;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Facades\Admin;
 use Encore\Admin\Form;
@@ -29,47 +32,153 @@ class BillingController extends AdminController
     {
         $grid = new Grid(new Consultation());
 
-        $grid->column('id', __('Id'));
-        $grid->column('print-invoice', __('Invoice'))
-            ->display(function ($id) {
-                $url = url('print-invoice?id=' . $this->id);
-                return '<a href="' . $url . '" target="_blank">Preview Invoice</a>';
+        //add this AddBillAction row action
+        $grid->actions(function ($actions) {
+            $actions->disableDelete();
+            $actions->disableEdit();
+            $actions->disableView();
+            $actions->add(new ConsultationAddBillAction);
+            $actions->add(new ViewBillAction);
+        });
+
+
+        //on export, export consultation_number as original
+        $grid->export(function ($export) {
+            $export->column('consultation_number', function ($value, $original) {
+                return $original;
             });
-        $grid->column('generate-invoice', __('Re-Generate Invoice'))
-            ->display(function ($id) {
-                $url = url('regenerate-invoice?id=' . $this->id);
-                return '<a href="' . $url . '" target="_blank">Re-Generate Invoice</a>';
+        });
+
+
+        $grid->disableBatchActions();
+        $grid->model()->where([
+            'main_status' => 'Ongoing',
+        ])->orderBy('id', 'desc');
+        $grid->quickSearch('patient_name', 'patient_contact')->placeholder('Search by name or contact');
+        $grid->column('id', __('Id'))->sortable()->hide();
+
+        $grid->column('created_at', __('Date'))
+            ->display(function ($date) {
+                return Utils::my_date_time($date);
+            })->sortable();
+        $grid->column('consultation_number', __('Consultation number'))
+            ->sortable()
+            ->display(function ($x) {
+                $link = admin_url('consultations/' . $this->id);
+                return "<a href='$link' title='View Consultation Details'><b>$x</b></a>";
             });
 
-        $grid->column('created_at', __('Created at'));
-        $grid->column('updated_at', __('Updated at'));
-        $grid->column('patient_id', __('Patient id'));
-        $grid->column('receptionist_id', __('Receptionist id'));
-        $grid->column('company_id', __('Company id'));
-        $grid->column('main_status', __('Main status'));
-        $grid->column('patient_name', __('Patient name'));
-        $grid->column('patient_contact', __('Patient contact'));
-        $grid->column('contact_address', __('Contact address'));
-        $grid->column('consultation_number', __('Consultation number'));
-        $grid->column('preferred_date_and_time', __('Preferred date and time'));
-        $grid->column('services_requested', __('Services requested'));
-        $grid->column('reason_for_consultation', __('Reason for consultation'));
-        $grid->column('main_remarks', __('Main remarks'));
-        $grid->column('request_status', __('Request status'));
-        $grid->column('request_date', __('Request date'));
-        $grid->column('request_remarks', __('Request remarks'));
-        $grid->column('receptionist_comment', __('Receptionist comment'));
-        $grid->column('temperature', __('Temperature'));
-        $grid->column('weight', __('Weight'));
-        $grid->column('height', __('Height'));
-        $grid->column('bmi', __('Bmi'));
-        $grid->column('total_charges', __('Total charges'));
-        $grid->column('total_paid', __('Total paid'));
-        $grid->column('total_due', __('Total due'));
-        $grid->column('payemnt_status', __('Payemnt status'));
+
+        $grid->column('updated_at', __('Updated'))
+            ->display(function ($date) {
+                return Utils::my_date_time($date);
+            })->sortable()
+            ->hide();
+        $grid->column('patient_id', __('Patient'))
+            ->display(function ($id) {
+                if ($this->patient == null) {
+                    return 'N/A';
+                }
+                return $this->patient->name;
+            })->sortable();
+        $grid->column('receptionist_id', __('Receptionist'))
+            ->display(function ($id) {
+                if ($this->receptionist == null) {
+                    return 'N/A';
+                }
+                return $this->receptionist->name;
+            })->sortable()->hide();;
+
+
+        $grid->column('patient_contact', __('Contact'));
+        $grid->column('contact_address', __('Address'))->sortable()->hide();
+        $grid->column('preferred_date_and_time', __('Consultation Date'))
+            ->sortable()
+            ->hide();
+        $grid->column('services_requested', __('Services Requested'))
+            ->sortable()->hide();
+        $grid->column('reason_for_consultation', __('Reason for consultation'))
+            ->sortable()
+            ->hide();
+        // $grid->column('request_status', __('Request status'));
+        // $grid->column('request_date', __('Request Date'));
+        // $grid->column('request_remarks', __('Request Remarks'));
+        // $grid->column('receptionist_comment', __('Receptionist comment'));
+        $grid->column('temperature', __('Temperature'))->sortable()->hide();
+        $grid->column('weight', __('Weight'))->sortable()->hide();
+        $grid->column('height', __('Height'))->sortable()->hide();
+        $grid->column('bmi', __('Bmi'))->sortable()->hide();
+        $grid->column('services_text', __('Services'));
+
+
+
+        $grid->column('total_charges', __('Total Amount (UGX)'))
+            ->display(function ($id) {
+                return number_format($id);
+            })->sortable();
+
+        $grid->column('main_status', __('Status'))
+            ->label([
+                'Billing' => 'warning',
+            ])->sortable();
+        $grid->column('invoice_processed', __('Invoice Status'))
+            ->label([
+                'Yes' => 'success',
+                'No' => 'danger',
+            ])
+            ->display(function ($status) {
+                $text = 'Yes';
+                if ($status != 'Yes') {
+                    $text = 'No';
+                }
+                if ($text == 'Yes') {
+                    return "<span class='label label-success'>Genarated</span>";
+                } else {
+                    return "<span class='label label-danger'>Not Genarated</span>";
+                }
+            })->sortable();
+
+        $grid->column('actions', __('Actions'))
+            ->display(function ($id) {
+                return view('admin.actions', [
+                    'id' => $this->id,
+                    'endpoint' => 'consultations',
+                    'hideActions' => true,
+                    'links' => [
+                        [
+                            'label' => 'Consultation Report',
+                            'icon' => 'eye',
+                            'url' => url('consultations/' . $this->id),
+                            'newTab' => true,
+                        ],
+                        [
+                            'label' => 'Update invoice (Billing)',
+                            'icon' => 'edit',
+                            'url' => admin_url('consultation-billing/' . $this->id . '/edit')
+                        ],
+                        [
+                            'label' => 'Generate invoice',
+                            'icon' => 'cog',
+                            'url' => url('regenerate-invoice?id=' . $this->id),
+                            'newTab' => true,
+                        ],
+                        [
+                            'label' => 'View invoice',
+                            'icon' => 'eye',
+                            'url' => url('print-invoice?id=' . $this->id),
+                            'newTab' => true,
+                        ],
+
+                    ]
+                ]);
+            });
+
+        $grid->disableActions();
+
 
         return $grid;
     }
+
 
     /**
      * Make a show builder.

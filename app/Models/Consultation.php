@@ -185,4 +185,15 @@ class Consultation extends Model
 
         $pdf->save($file_path);
     }
+
+    //getter for services_text
+    public function getServicesTextAttribute()
+    {
+        $medical_services = $this->medical_services;
+        $text = '';
+        foreach ($medical_services as $medical_service) {
+            $text .= $medical_service->type . ', ';
+        }
+        return $text;
+    }
 }
