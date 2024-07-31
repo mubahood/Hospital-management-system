@@ -2,8 +2,11 @@
 
 namespace App\Admin\Controllers;
 
+use App\Models\Consultation;
 use App\Models\PaymentRecord;
+use App\Models\User;
 use Encore\Admin\Controllers\AdminController;
+use Encore\Admin\Facades\Admin;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
@@ -24,6 +27,8 @@ class PaymentRecordController extends AdminController
      */
     protected function grid()
     {
+        $rec = PaymentRecord::find(5);
+        $rec = PaymentRecord::prepare($rec);
         $grid = new Grid(new PaymentRecord());
 
         $grid->column('id', __('Id'));
@@ -85,19 +90,127 @@ class PaymentRecordController extends AdminController
     {
         $form = new Form(new PaymentRecord());
 
-        $form->number('consultation_id', __('Consultation id'));
-        $form->textarea('description', __('Description'));
-        $form->decimal('amount_payable', __('Amount payable'));
-        $form->decimal('amount_paid', __('Amount paid'));
-        $form->decimal('balance', __('Balance'));
-        $form->text('payment_date', __('Payment date'));
-        $form->text('payment_time', __('Payment time'));
-        $form->text('payment_method', __('Payment method'));
-        $form->text('payment_reference', __('Payment reference'));
-        $form->text('payment_status', __('Payment status'))->default('Pending');
-        $form->textarea('payment_remarks', __('Payment remarks'));
-        $form->text('payment_phone_number', __('Payment phone number'));
-        $form->text('payment_channel', __('Payment channel'));
+        $hasConsultation = false;
+        $consultation = null;
+        $id = null;
+        if (isset($_GET['id'])) {
+            $id = $_GET['id'];
+            $consultation = \App\Models\Consultation::find($id);
+            if ($consultation != null) {
+                $hasConsultation = true;
+            }
+        }
+
+        //$form-> is creating?
+        if (!$form->isCreating() && (!$hasConsultation)) {
+            $method = $_SERVER['REQUEST_METHOD'];
+            //check if is get 
+            if ($method == 'GET') {
+                $url = $_SERVER['REQUEST_URI'];
+                $segments = explode('/', $url);
+                //second last
+                $id = $segments[count($segments) - 2];
+                $item = PaymentRecord::find($id);
+                if ($item != null && $item->consultation != null) {
+                    $consultation = $item->consultation;
+                    $hasConsultation = true;
+                }
+            }
+        }
+
+        if ($hasConsultation) {
+            $form->display('name_text', 'Consultation')
+                ->default($consultation->name_text);
+            //hidden consultation id
+            $form->hidden('consultation_id', 'Consultation ID')
+                ->default($consultation->id)
+                ->required();
+            //payable amount
+            $form->display('amount_payable', 'Amount Payable (UGX)')
+                ->default(number_format($consultation->total_charges));
+            //amount paid amount_paid
+            $form->display('amount_paid', 'Amount Paid (UGX)')
+                ->default(number_format($consultation->total_paid));
+            $form->divider();
+            $form->display('balance', 'Balance (UGX)')
+                ->default(number_format($consultation->total_due));
+            $form->divider();
+        } else {
+            $form->select('consultation_id', __('Consultation'))
+                ->options(Consultation::get_payble_consultations())
+                ->rules('required')
+                ->required();
+        }
+
+        $form->decimal('amount_paid', __('Amount Paid'))->rules('required')->required();
+        $form->radio('payment_method', __('Payment Method'))
+            ->options([
+                'Cash' => 'Cash',
+                'Card' => 'Card',
+                'Mobile Money' => 'Mobile Money',
+                'Flutterwave' => 'Flutterwave',
+            ])
+            ->default('Mobile Money')
+            ->required()
+            ->rules('required')
+            ->when('Mobile Money', function ($form) {
+                $form->text('payment_phone_number', __('Payment Phone Number'))->rules('required');
+                $form->text('payment_reference', __('Payment Reference number'));
+            })
+            ->when('Card', function ($form) {
+
+                $ajax_url = url(
+                    '/api/ajax-cards'
+                );
+                $form->select('card_id', "Select card")
+                    ->options(function ($id) {
+                        $a = User::find($id);
+                        if ($a) {
+                            return [$a->id => "#" . $a->id . " - " . $a->card_number];
+                        }
+                    })
+                    ->ajax($ajax_url)->rules('required');
+            })
+            ->when('Cash', function ($form) {
+                $form->text('cash_receipt_number', __('Cash Receipt Number'))->rules('required');
+                //rceived by
+                $form->hidden('cash_received_by_id', 'Cash Received By')
+                    ->default(Admin::user()->id)
+                    ->required();
+                $form->display('cash_received_by', 'Cash Received By')
+                    ->default(Admin::user()->name);
+            });
+
+        $form->divider();
+        $form->datetime('payment_date', __('Payment Date'))->rules('required')->required()->default(date('Y-m-d H:i:s'));
+        $form->text('payment_remarks', __('Payment Remarks'));
+        $form->disableCreatingCheck();
+        $form->disableEditingCheck();
+        /* 
+            $table->foreignIdFor(User::class, 'cash_received_by_id')->nullable();
+            $table->foreignIdFor(User::class, 'created_by_id')->nullable();
+            $table->text('cash_receipt_number')->nullable(); 
+            $table->foreignIdFor(Company::class, 'company_id')->nullable();
+            $table->text('card_number')->nullable();
+            $table->text('card_type')->nullable();
+
+            $table->text('flutterwave_reference')->nullable();
+            $table->text('flutterwave_payment_type')->nullable();
+            $table->text('flutterwave_payment_status')->nullable();
+            $table->text('flutterwave_payment_message')->nullable();
+            $table->text('flutterwave_payment_code')->nullable();
+            $table->text('flutterwave_payment_data')->nullable();
+            $table->text('flutterwave_payment_link')->nullable();
+            $table->text('flutterwave_payment_amount')->nullable();
+            $table->text('flutterwave_payment_customer_name')->nullable();
+            $table->text('flutterwave_payment_customer_id')->nullable();
+            $table->text('flutterwave_payment_customer_email')->nullable();
+            $table->text('flutterwave_payment_customer_phone_number')->nullable();
+            $table->text('flutterwave_payment_customer_full_name')->nullable();
+            $table->text('flutterwave_payment_customer_created_at')->nullable();
+        */
+
+
 
         return $form;
     }

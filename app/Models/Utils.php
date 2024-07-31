@@ -905,6 +905,7 @@ class Utils extends Model
     public static function system_boot()
     {
 
+        Consultation::process_ongoing_consultations(); 
 
         //Companies with no financial years
         foreach (Company::where([

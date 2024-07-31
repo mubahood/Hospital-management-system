@@ -6,6 +6,8 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'App\\Admin\\Actions\\Consultation\\AddBillAction' => $baseDir . '/app/Admin/Actions/Consultation/AddBillAction.php',
+    'App\\Admin\\Actions\\Consultation\\ViewBillAction' => $baseDir . '/app/Admin/Actions/Consultation/ViewBillAction.php',
     'App\\Admin\\Controllers\\AdminRoleController' => $baseDir . '/app/Admin/Controllers/AdminRoleController.php',
     'App\\Admin\\Controllers\\AssociationController' => $baseDir . '/app/Admin/Controllers/AssociationController.php',
     'App\\Admin\\Controllers\\AuthController' => $baseDir . '/app/Admin/Controllers/AuthController.php',
@@ -13,6 +15,7 @@ return array(
     'App\\Admin\\Controllers\\ClientController' => $baseDir . '/app/Admin/Controllers/ClientController.php',
     'App\\Admin\\Controllers\\CompanyController' => $baseDir . '/app/Admin/Controllers/CompanyController.php',
     'App\\Admin\\Controllers\\ConsultationController' => $baseDir . '/app/Admin/Controllers/ConsultationController.php',
+    'App\\Admin\\Controllers\\ConsultationPaymentController' => $baseDir . '/app/Admin/Controllers/ConsultationPaymentController.php',
     'App\\Admin\\Controllers\\DepartmentController' => $baseDir . '/app/Admin/Controllers/DepartmentController.php',
     'App\\Admin\\Controllers\\EmployeesController' => $baseDir . '/app/Admin/Controllers/EmployeesController.php',
     'App\\Admin\\Controllers\\EventController' => $baseDir . '/app/Admin/Controllers/EventController.php',

@@ -41,21 +41,7 @@ Route::get('regenerate-invoice', function () {
     return $pdf->stream('test.pdf');
 });
 
-Route::get('print-invoice', function () {
-    $id = $_GET['id'];
-    $item = Consultation::find($id);
-    if ($item == null) {
-        die('item not found');
-    }
-    $company = Company::find(1);
-    $pdf = App::make('dompdf.wrapper');
-    $pdf->set_option('enable_html5_parser', TRUE);
-    $pdf->loadHTML(view('invoice', [
-        'item' => $item,
-        'company' => $company,
-    ])->render());
-    return $pdf->stream('test.pdf');
-});
+ 
 
 Route::get('app', function () {
     //return url('taskease-v1.apk');

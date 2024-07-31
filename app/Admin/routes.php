@@ -45,6 +45,7 @@ Route::group([
     $router->resource('stock-items', StockItemController::class);
     $router->resource('stock-out-records', StockOutRecordController::class);
     $router->resource('consultation-billing', BillingController::class);
+    $router->resource('consultation-payments', ConsultationPaymentController::class);
     $router->resource('payment-records', PaymentRecordController::class);
     $router->resource('progress-monitoring', ProgressMonitoringController::class);
 });

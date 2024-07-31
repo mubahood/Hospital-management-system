@@ -24,6 +24,22 @@ class Consultation extends Model
         static::updating(function ($model) {
             $model = Consultation::do_prepare($model);
         });
+
+        //deleting
+        static::deleting(function ($model) {
+            $medical_services = $model->medical_services;
+            foreach ($medical_services as $medical_service) {
+                $medical_service->delete();
+            }
+            $billing_items = $model->billing_items;
+            foreach ($billing_items as $billing_item) {
+                $billing_item->delete();
+            }
+            $payment_records = $model->payment_records;
+            foreach ($payment_records as $payment_record) {
+                $payment_record->delete();
+            }
+        }); 
     }
 
     static function do_prepare($model)
@@ -97,14 +113,48 @@ class Consultation extends Model
         return 'this->patient->name . ' - ' . $this->patient->phone_number_1';
     }
 
-    //price getter
-    public function getPriceAttribute()
+    public static function process_ongoing_consultations()
     {
-        return 90000;
+        $consultations = Consultation::where('main_status', 'Ongoing')
+            ->limit(100)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        foreach ($consultations as $consultation) {
+            $consultation->process_invoice();
+            $consultation->process_payment_status();
+            $consultation->process_balance();
+        }
     }
+
+    public function process_balance()
+    {
+        if ($this->main_status == 'Completed') {
+            return;
+        }
+
+        $amount_paid = PaymentRecord::where([
+            'consultation_id' => $this->id,
+            'payment_status' => 'Success'
+        ])->sum('amount_paid');
+
+        $this->total_paid = $amount_paid;
+        $this->total_due = $this->total_charges - $amount_paid;
+        if ($this->total_due <= 0) {
+            $this->payemnt_status = 'Paid';
+            $this->main_status = 'Completed';
+        } else {
+            $this->payemnt_status = 'Not Paid';
+        }
+        $this->save();
+    }
+
 
     public function process_invoice()
     {
+        if ($this->main_status != 'Ongoing') {
+            return;
+        }
+
         $medical_services = $this->medical_services;
         $subtotal = 0;
         foreach ($medical_services as $medical_service) {
@@ -123,9 +173,9 @@ class Consultation extends Model
 
                 if ($isFirst) {
                     $isFirst = false;
-                    $medical_service->remarks = '<b>' . $medical_service_item->remarks . "</b><br><b>$stock_item->name</b>: " . (float)($medical_service_item->quantity) . " x " . number_format($stock_item->sale_price) . " = " . number_format($medical_service_item->total_price);
+                    $medical_service->remarks = '' . $medical_service_item->remarks . ": $stock_item->name: " . (float)($medical_service_item->quantity) . " x " . number_format($stock_item->sale_price) . " = " . number_format($medical_service_item->total_price);
                 } else {
-                    $medical_service->remarks .= "<br><b>$stock_item->name</b>: " . (float)($medical_service_item->quantity) . " x " . number_format($stock_item->sale_price) . " = " . number_format($medical_service_item->total_price);
+                    $medical_service->remarks .= ", $stock_item->name: " . (float)($medical_service_item->quantity) . " x " . number_format($stock_item->sale_price) . " = " . number_format($medical_service_item->total_price);
                 }
                 $medical_service_item->save();
                 $medical_service->total_price += $medical_service_item->total_price;
@@ -191,9 +241,66 @@ class Consultation extends Model
     {
         $medical_services = $this->medical_services;
         $text = '';
+        $isFirst = true;
         foreach ($medical_services as $medical_service) {
-            $text .= $medical_service->type . ', ';
+            if ($isFirst) {
+                $isFirst = false;
+                $text = $medical_service->type;
+            } else {
+                $text .= ', ' . $medical_service->type;
+            }
         }
         return $text;
     }
+
+    //getter for is_ready_for_billing
+    public function process_payment_status()
+    {
+        $medical_services = $this->medical_services;
+        $isReady = true;
+        foreach ($medical_services as $medical_service) {
+            if ($medical_service->status != 'Completed') {
+                $isReady = false;
+                break;
+            }
+        }
+        if ($isReady) {
+            $this->bill_status = 'Ready for Billing';
+        } else {
+            $this->bill_status = 'Not Ready for Billing';
+        }
+        $this->save();
+        return $isReady;
+    }
+
+    //has many PaymentRecords
+    public function payment_records()
+    {
+        return $this->hasMany(PaymentRecord::class);
+    }
+
+    public static function get_payble_consultations()
+    {
+        $consultations = Consultation::where([
+            'main_status' => 'Payment',
+        ])->get();
+        $data = [];
+        foreach ($consultations as $consultation) {
+            $data[$consultation->id] = $consultation->name_text;
+        }
+        return $data;
+    }
+
+    //getter for name_text to be consultation ID and name of patient
+    public function getNameTextAttribute()
+    {
+        $name = '';
+        if ($this->patient != null) {
+            $name = ' - ' . $this->patient->name;
+        }
+        return $this->consultation_number . " " . $name;
+    }
+
+    //appends for services_text
+    protected $appends = ['services_text', 'name_text'];
 }

@@ -610,6 +610,8 @@ class ComposerStaticInitda89eef54c810448a827ed04bb3da82f
     );
 
     public static $classMap = array (
+        'App\\Admin\\Actions\\Consultation\\AddBillAction' => __DIR__ . '/../..' . '/app/Admin/Actions/Consultation/AddBillAction.php',
+        'App\\Admin\\Actions\\Consultation\\ViewBillAction' => __DIR__ . '/../..' . '/app/Admin/Actions/Consultation/ViewBillAction.php',
         'App\\Admin\\Controllers\\AdminRoleController' => __DIR__ . '/../..' . '/app/Admin/Controllers/AdminRoleController.php',
         'App\\Admin\\Controllers\\AssociationController' => __DIR__ . '/../..' . '/app/Admin/Controllers/AssociationController.php',
         'App\\Admin\\Controllers\\AuthController' => __DIR__ . '/../..' . '/app/Admin/Controllers/AuthController.php',
@@ -617,6 +619,7 @@ class ComposerStaticInitda89eef54c810448a827ed04bb3da82f
         'App\\Admin\\Controllers\\ClientController' => __DIR__ . '/../..' . '/app/Admin/Controllers/ClientController.php',
         'App\\Admin\\Controllers\\CompanyController' => __DIR__ . '/../..' . '/app/Admin/Controllers/CompanyController.php',
         'App\\Admin\\Controllers\\ConsultationController' => __DIR__ . '/../..' . '/app/Admin/Controllers/ConsultationController.php',
+        'App\\Admin\\Controllers\\ConsultationPaymentController' => __DIR__ . '/../..' . '/app/Admin/Controllers/ConsultationPaymentController.php',
         'App\\Admin\\Controllers\\DepartmentController' => __DIR__ . '/../..' . '/app/Admin/Controllers/DepartmentController.php',
         'App\\Admin\\Controllers\\EmployeesController' => __DIR__ . '/../..' . '/app/Admin/Controllers/EmployeesController.php',
         'App\\Admin\\Controllers\\EventController' => __DIR__ . '/../..' . '/app/Admin/Controllers/EventController.php',

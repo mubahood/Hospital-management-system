@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Models\Consultation;
 use App\Models\MedicalService;
 use App\Models\StockItem;
 use App\Models\Utils;
@@ -28,12 +29,14 @@ class MedicalServiceController extends AdminController
     {
         $grid = new Grid(new MedicalService());
         $grid->disableBatchActions();
+        $grid->disableCreateButton(); 
 
-        //where consultation.status = Ongoing
+        //consulation ids of ongoing
+        $consultation_ids = Consultation::where('main_status', '=', 'Ongoing')->pluck('id')->toArray();
+
         $grid->model()
-            ->join('consultations', 'consultations.id', '=', 'medical_services.consultation_id')
-            ->where('consultations.main_status', 'Ongoing')
-            ->orderBy('medical_services.created_at', 'desc');
+            ->whereIn('consultation_id', $consultation_ids)
+            ->orderBy('created_at', 'desc');
 
         $grid->column('consultation_id', __('Consultation'))
             ->display(function ($id) {
@@ -59,6 +62,8 @@ class MedicalServiceController extends AdminController
                 }
                 return $this->assigned_to->name;
             })->sortable();
+        $grid->column('id', __('ID'))
+            ->sortable();
         $grid->column('type', __('Service'))
             ->sortable();
         $grid->column('remarks', __('Remarks'))->hide();
@@ -79,6 +84,7 @@ class MedicalServiceController extends AdminController
             ->filter([
                 'Pending' => 'Pending',
                 'Ongoing' => 'Ongoing',
+                'Completed' => 'Completed',
             ])
             ->label([
                 'Pending' => 'warning',
@@ -124,16 +130,19 @@ class MedicalServiceController extends AdminController
     {
         $form = new Form(new MedicalService());
 
+        //disable create
+        if ($form->isCreating()) {
+            admin_error('Medical Services cannot be created directly. They are created from Consultations.');
+            $form->disableSubmit();
+            $form->disableViewCheck();
+            $form->disableReset();
+            return $form;
+        }
+
+
         $form->display('type', __('Service Type'));
         $form->display('instruction', __('Instructions'));
-        $form->divider();
-        $form->radio('status', __('Status'))
-            ->options([
-                'Pending' => 'Pending',
-                'Ongoing' => 'Ongoing',
-                'Cancelled' => 'Cancelled',
-                'Completed' => 'Completed',
-            ])->rules('required');
+
         $form->text('specialist_outcome', __('Specialist Remarks'));
         $form->divider('Medical Services Offered');
 
@@ -146,6 +155,14 @@ class MedicalServiceController extends AdminController
             $form->text('description', __('Description'))->rules('required');
             $form->file('file', __('Add an Attachment'))->uniqueName()->removable();
         });
+
+        $form->divider('Medical Service Status');
+        $form->radio('status', __('Status'))
+            ->options([
+                'Pending' => 'Pending',
+                'Ongoing' => 'Ongoing',
+                'Completed' => 'Completed',
+            ])->rules('required');
 
 
         return $form;

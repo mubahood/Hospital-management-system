@@ -14,14 +14,14 @@ use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
 
-class BillingController extends AdminController
+class ConsultationPaymentController extends AdminController
 {
     /**
      * Title for current resource.
      *
      * @var string
      */
-    protected $title = 'Consultations Billings';
+    protected $title = 'Consultations Payments';
 
     /**
      * Make a grid builder.
@@ -52,8 +52,7 @@ class BillingController extends AdminController
 
         $grid->disableBatchActions();
         $grid->model()->where([
-            'main_status' => 'Ongoing',
-            'bill_status' => 'Ready for Billing',
+            'main_status' => 'Payment',
         ])->orderBy('id', 'desc');
         $grid->quickSearch('patient_name', 'patient_contact')->placeholder('Search by name or contact');
         $grid->column('id', __('Id'))->sortable()->hide();
@@ -157,9 +156,9 @@ class BillingController extends AdminController
                             'newTab' => true,
                         ],
                         [
-                            'label' => 'Update invoice (Billing)',
-                            'icon' => 'edit',
-                            'url' => admin_url('consultation-billing/' . $this->id . '/edit')
+                            'label' => 'Add payment record',
+                            'icon' => 'plus',
+                            'url' => admin_url('payment-records/create?id=' . $this->id)
                         ],
                         [
                             'label' => 'View invoice',
@@ -230,27 +229,20 @@ class BillingController extends AdminController
         $form = new Form(new Consultation());
 
         $url = $_SERVER['REQUEST_URI'];
-        $segments = explode('/', $url);
-        //second last
-        $id = $segments[count($segments) - 2];
-        $item = Consultation::find($id);
+
 
         //method
         $method = $_SERVER['REQUEST_METHOD'];
 
         //check if is get 
-        if ($item != null && $method == 'GET') {
-            //is ready for billing?
-            if ($item->bill_status != 'Ready for Billing') {
-                admin_error('Not ready for billing. Complete all services first.');
-                $form->disableSubmit();
-                $form->disableViewCheck();
-                $form->disableReset();
-                return $form;
-            }
+        if (null && $method == 'GET') {
+            $segments = explode('/', $url);
+            //second last
+            $id = $segments[count($segments) - 2];
+            $item = Consultation::find($id);
 
-            if ($item->main_status != 'Ongoing') {
-                admin_error('You cannot bill a consultation that is not ongoing.');
+            if ($item->main_status != 'Payment') {
+                admin_error('This consultation is not ready for payment.');
                 $form->disableSubmit();
                 $form->disableViewCheck();
                 $form->disableReset();
@@ -267,47 +259,22 @@ class BillingController extends AdminController
 
         $form->display('patient_name', __('Patient'));
         $form->display('consultation_number', __('Consultation number'));
+        $form->display('total_charges', 'Total Payable Amount (UGX)')->readonly();
+        //total_paid
+        $form->display('total_paid', 'Total Paid Amount (UGX)')->readonly();
+        $form->divider();
+        $form->display('total_due', 'Total Due Amount (UGX)')->readonly();
+        $form->divider('Payment Records');
 
-        $form->hidden('receptionist_id', __('Receptionist id'))->default($u->id);
+        $form->hasMany('payment_records', 'Click on (New) to add Payment Record', function (Form\NestedForm $form) {
+            $form->currency('amount_paid', 'Amount Paid (UGX)')->symbol('UGX');
+            $form->datetime('payment_date', 'Payment Date')->default(date('Y-m-d H:i:s'));
+            $form->text('payment_method', 'Payment Method');
+            $form->text('payment_reference', 'Payment Reference');
+            $form->text('payment_remarks', 'Payment Remarks');
+            $form->hidden('consultation_id');
+        })->disableDelete();
 
-
-        $form->divider('Medical Services Offered');
-        $form->hasMany('medical_services', null, function (Form\NestedForm $form) {
-            $form->select('type', __('Service'))
-                ->options(Service::all()->pluck('name', 'name')->toArray())
-                ->readOnly();
-            $form->textarea('remarks', __('Remarks'))->readonly();
-            // assigned_to_id assign to specialist or doctor
-            /* $form->select('assigned_to_id', __('Conducted By'))
-                ->options(User::get_doctors())
-                ->readOnly(); */
-            //status hide as hidden
-            $form->hidden('status', __('Status'))->default('Pending');
-            //instruction
-            $form->decimal('total_price', __('Total'))->readonly();
-        })->mode('table')
-            ->disableCreate()
-            ->disableDelete();
-
-        $form->divider('More Billing Items');
-
-
-
-
-        //has many billing_items
-        $form->hasMany('billing_items', 'Add fees or charges', function (Form\NestedForm $form) {
-            $form->radio('type', __('Billing Item Type'))
-                ->options([
-                    'Discount' => 'Discount',
-                    'Fee' => 'Fee',
-                    'Tax' => 'Tax',
-                ])->rules('required');
-            $form->text('description', __('Description'))->rules('required');
-            $form->decimal('price', __('Amount (UGX)'))->rules('required');
-        });
-        $form->display('total_charges', __('Total Charges (UGX)'))->readonly();
-
-        $form->divider('Consultation Status');
         $form->disableCreatingCheck();
         $form->radio('main_status', __('Update Consultation Stage'))
             ->options([

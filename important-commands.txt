@@ -2,7 +2,7 @@ php artisan migrate
 
 php artisan make:migration create_courses_table
 
-php artisan make:migration add_invoice_processed_to_consultations --table=consultations
+php artisan make:migration add_cols_to_payment_records --table=payment_records
  
 php artisan admin:make PaymentRecordController --model=App\\Models\\PaymentRecord
  

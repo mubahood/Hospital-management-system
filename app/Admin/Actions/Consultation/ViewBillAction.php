@@ -12,6 +12,6 @@ class ViewBillAction extends RowAction
 
     public function handle(Model $model)
     {
-        return $this->response()->redirect(url("/print-invoice?id={$model->id}"));
+        return $this->response()->redirect(url("/regenerate-invoice?id={$model->id}"));
     }
 }
