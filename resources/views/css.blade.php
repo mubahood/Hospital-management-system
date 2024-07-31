@@ -1,5 +1,5 @@
 <?php 
-$color = "#19AAA7";
+$color = "#19aaa7";
 if(isset($company)){
     $color = $company->color;
 }

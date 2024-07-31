@@ -30,23 +30,44 @@ class PaymentRecordController extends AdminController
         $rec = PaymentRecord::find(5);
         $rec = PaymentRecord::prepare($rec);
         $grid = new Grid(new PaymentRecord());
+        $grid->disableBatchActions();
+        $grid->model()->orderBy('id', 'desc');
+        $grid->quickSearch('description', 'payment_reference', 'payment_phone_number')->placeholder('Search by description, reference or phone number');
 
-        $grid->column('id', __('Id'));
-        $grid->column('created_at', __('Created at'));
-        $grid->column('updated_at', __('Updated at'));
-        $grid->column('consultation_id', __('Consultation id'));
-        $grid->column('description', __('Description'));
-        $grid->column('amount_payable', __('Amount payable'));
-        $grid->column('amount_paid', __('Amount paid'));
+
+        $grid->column('created_at', __('Date'))
+            ->display(function ($date) {
+                return \App\Models\Utils::my_date_time($date);
+            })->sortable();
+        $grid->column('consultation_id', __('Consultation'))
+            ->display(function ($id) {
+                if ($this->consultation == null) {
+                    return 'N/A';
+                }
+                return $this->consultation->name_text;
+            })->sortable();
+        $grid->column('description', __('Description'))->hide();
+        $grid->column('amount_payable', __('Amount Payable'))->sortable();
+        $grid->column('amount_paid', __('Amount Paid'))->sortable();
         $grid->column('balance', __('Balance'));
-        $grid->column('payment_date', __('Payment date'));
-        $grid->column('payment_time', __('Payment time'));
-        $grid->column('payment_method', __('Payment method'));
+        $grid->column('payment_date', __('Payment Date'))
+            ->sortable();
+        $grid->column('payment_method', __('Payment Method'))
+            ->label([
+                'Cash' => 'info',
+                'Card' => 'success',
+                'Mobile Money' => 'warning',
+                'Flutterwave' => 'danger',
+            ]);
         $grid->column('payment_reference', __('Payment reference'));
-        $grid->column('payment_status', __('Payment status'));
-        $grid->column('payment_remarks', __('Payment remarks'));
-        $grid->column('payment_phone_number', __('Payment phone number'));
-        $grid->column('payment_channel', __('Payment channel'));
+        $grid->column('payment_status', __('Status'))
+            ->label([
+                'Pending' => 'default',
+                'Success' => 'success',
+                'Failed' => 'danger',
+            ]);
+        $grid->column('payment_remarks', __('Payment remarks'))->sortable();
+        $grid->column('payment_phone_number', __('Payment phone number'))->hide();
 
         return $grid;
     }

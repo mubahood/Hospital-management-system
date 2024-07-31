@@ -8,9 +8,9 @@ use App\Models\Utils;
     <!-- Logo -->
     <a href="{{ admin_url('/') }}" class="logo">
         <!-- mini logo for sidebar mini 50x50 pixels -->
-        <span class="logo-mini">{!! 'TaskEase' !!}</span>
+        <span class="logo-mini">{!! env('APP_NAME', 'GlobalHealth') !!}</span>
         <!-- logo for regular state and mobile devices -->
-        <span class="logo-lg">{!! 'TaskEase' !!}</span>
+        <span class="logo-lg">{!! env('APP_NAME', 'GlobalHealth') !!}</span>
     </a>
 
     <!-- Header Navbar -->

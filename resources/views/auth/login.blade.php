@@ -7,8 +7,10 @@
 
             <!-- Home button -->
             <a class=" rounded-circle position-absolute top-0 end-0 p-0 mt-3 me-3 mt-sm-4 me-sm-4" href="javascript:;"
-                data-bs-toggle="tooltip" data-bs-placement="left" title="Powered By TaskEase (c) 2024"
-                aria-label="Powered By TaskEase (c) 2024" style="width: 70px; border-radius: 50%; ">
+                data-bs-toggle="tooltip" data-bs-placement="left"
+                title="Powered By {{ env('APP_NAME', 'GlobalHealth') }} (c) 2024"
+                aria-label="Powered By {{ env('APP_NAME', 'GlobalHealth') }} (c) 2024"
+                style="width: 70px; border-radius: 50%; ">
 
                 <img class="text-center img img-fluid rounded-circle" style="border-radius: 50%;"
                     src="{{ url('assets/img/logo.png') }}" alt="logo">

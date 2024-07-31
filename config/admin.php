@@ -11,7 +11,7 @@ return [
     | login page.
     |
     */
-    'name' => 'TaskEase',
+    'name' => env('APP_NAME', 'GlobalHealth'),
 
     /*
     |--------------------------------------------------------------------------
@@ -22,7 +22,7 @@ return [
     | `img` tag, eg '<img src="http://logo-url" alt="Admin logo">'.
     |
     */
-    'logo' => '<b>TaskEase</b> admin',
+    'logo' => '<b>'.env('APP_NAME', 'GlobalHealth').'</b> admin',
 
     /*
     |--------------------------------------------------------------------------
@@ -34,7 +34,7 @@ return [
     | '<img src="http://logo-url" alt="Admin logo">'.
     |
     */
-    'logo-mini' => '<b>TaskEase</b>',
+    'logo-mini' => '<b>'.env('APP_NAME', 'GlobalHealth').'</b>',
 
     /*
     |--------------------------------------------------------------------------

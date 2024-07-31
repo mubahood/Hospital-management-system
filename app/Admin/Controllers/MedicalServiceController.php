@@ -29,10 +29,10 @@ class MedicalServiceController extends AdminController
     {
         $grid = new Grid(new MedicalService());
         $grid->disableBatchActions();
-        $grid->disableCreateButton(); 
+        $grid->disableCreateButton();
 
         //consulation ids of ongoing
-        $consultation_ids = Consultation::where('main_status', '=', 'Ongoing')->pluck('id')->toArray();
+        $consultation_ids = Consultation::where([])->pluck('id')->toArray();
 
         $grid->model()
             ->whereIn('consultation_id', $consultation_ids)
@@ -67,7 +67,8 @@ class MedicalServiceController extends AdminController
         $grid->column('type', __('Service'))
             ->sortable();
         $grid->column('remarks', __('Remarks'))->hide();
-        $grid->column('instruction', __('Instruction'))->sortable();
+        $grid->column('instruction', __('Instruction'))->sortable()
+            ->editable('textarea');
         $grid->column('specialist_outcome', __('Specialist outcome'))
             ->display(function ($outcome) {
                 if ($outcome == null || $outcome == '') {

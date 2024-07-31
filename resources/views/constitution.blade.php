@@ -24,7 +24,8 @@
                             <li class="breadcrumb-item">
                                 <a href="{{ url('about-us') }}">About us</a>
                             </li>
-                            <li class="breadcrumb-item active" aria-current="page">TaskEase - project profile</li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ env('APP_NAME', 'GlobalHealth') }} -
+                                project profile</li>
                         </ol>
                     </nav>
                 </div>
@@ -35,9 +36,10 @@
 
                 <div class="col-lg-8 lead text-center">
                     <h1>MaRCCI - project profile</h1>
-                    
-                    <a href="javascript:;" class="btn btn-primary btn-lg text-uppercase my-5">DOWNLOAD PROFILE <i class="fa fa-file"></i></a>
-                    
+
+                    <a href="javascript:;" class="btn btn-primary btn-lg text-uppercase my-5">DOWNLOAD PROFILE <i
+                            class="fa fa-file"></i></a>
+
                 </div>
             </div>
         </div>

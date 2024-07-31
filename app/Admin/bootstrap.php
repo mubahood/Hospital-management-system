@@ -64,8 +64,7 @@ if ($u != null) {
         $u = Admin::user();
         $links = [];
         $links = [
-            'New Task' => admin_url('tasks/create'),
-            'New Meeting' => admin_url('meetings/create'),
+            'New Consultations' => admin_url('consultations/create'),
         ];
         if ($u->isRole('company-admin')) {
             $links['New Employee'] = admin_url('employees/create');

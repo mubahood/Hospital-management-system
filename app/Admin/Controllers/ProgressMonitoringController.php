@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Models\Consultation;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\Utils;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Facades\Admin;
 use Encore\Admin\Form;
@@ -28,38 +29,74 @@ class ProgressMonitoringController extends AdminController
     protected function grid()
     {
         $grid = new Grid(new Consultation());
+        $grid->disableBatchActions();
+        $grid->model()->where([])->orderBy('id', 'desc');
+        $grid->quickSearch('patient_name', 'patient_contact')->placeholder('Search by name or contact');
+        $grid->column('id', __('Id'))->sortable()->hide();
+        $grid->column('consultation_number', __('Consultation number'))
+            ->sortable();
+        $grid->column('created_at', __('Date'))
+            ->display(function ($date) {
+                return Utils::my_date_time($date);
+            })->sortable();
+        $grid->column('updated_at', __('Updated'))
+            ->display(function ($date) {
+                return Utils::my_date_time($date);
+            })->sortable()
+            ->hide();
+        $grid->column('patient_id', __('Patient'))
+            ->display(function ($id) {
+                if ($this->patient == null) {
+                    return 'N/A';
+                }
+                return $this->patient->name;
+            })->sortable();
+        $grid->column('receptionist_id', __('Receptionist'))
+            ->display(function ($id) {
+                if ($this->receptionist == null) {
+                    return 'N/A';
+                }
+                return $this->receptionist->name;
+            })->sortable()->hide();;
 
-        $grid->column('id', __('Id'));
-        $grid->column('created_at', __('Created at'));
-        $grid->column('updated_at', __('Updated at'));
-        $grid->column('patient_id', __('Patient id'));
-        $grid->column('receptionist_id', __('Receptionist id'));
-        $grid->column('company_id', __('Company id'));
-        $grid->column('main_status', __('Main status'));
-        $grid->column('patient_name', __('Patient name'));
-        $grid->column('patient_contact', __('Patient contact'));
-        $grid->column('contact_address', __('Contact address'));
-        $grid->column('consultation_number', __('Consultation number'));
-        $grid->column('preferred_date_and_time', __('Preferred date and time'));
-        $grid->column('services_requested', __('Services requested'));
-        $grid->column('reason_for_consultation', __('Reason for consultation'));
-        $grid->column('main_remarks', __('Main remarks'));
-        $grid->column('request_status', __('Request status'));
-        $grid->column('request_date', __('Request date'));
-        $grid->column('request_remarks', __('Request remarks'));
-        $grid->column('receptionist_comment', __('Receptionist comment'));
-        $grid->column('temperature', __('Temperature'));
-        $grid->column('weight', __('Weight'));
-        $grid->column('height', __('Height'));
-        $grid->column('bmi', __('Bmi'));
-        $grid->column('total_charges', __('Total charges'));
-        $grid->column('total_paid', __('Total paid'));
-        $grid->column('total_due', __('Total due'));
-        $grid->column('payemnt_status', __('Payemnt status'));
 
+        $grid->column('patient_contact', __('Contact'));
+        $grid->column('contact_address', __('Address'))->sortable()->hide();
+        $grid->column('preferred_date_and_time', __('Consultation Date'))
+            ->sortable()
+            ->hide();
+        $grid->column('services_requested', __('Services Requested'))
+            ->sortable();
+        $grid->column('reason_for_consultation', __('Reason for consultation'))
+            ->sortable()
+            ->hide();
+        // $grid->column('request_status', __('Request status'));
+        // $grid->column('request_date', __('Request Date'));
+        // $grid->column('request_remarks', __('Request Remarks'));
+        // $grid->column('receptionist_comment', __('Receptionist comment'));
+        $grid->column('temperature', __('Temperature'))->sortable();
+        $grid->column('weight', __('Weight'))->sortable();
+        $grid->column('height', __('Height'))->sortable()->hide();
+        $grid->column('bmi', __('Bmi'))->sortable();
+
+        $grid->column('main_status', __('Status'))
+            ->filter([
+                'Pending' => 'Pending',
+                'Completed' => 'Completed',
+                'Ongoing' => 'Ongoing',
+                'Rejected' => 'Rejected',
+                'Cancelled' => 'Cancelled',
+                'Approved' => 'Approved',
+            ])->label([
+                'Pending' => 'primary',
+                'Approved' => 'success',
+                'Completed' => 'success',
+                'Ongoing' => 'success',
+                'Rejected' => 'danger',
+                'Rescheduled' => 'warning',
+            ])->sortable();
         return $grid;
     }
-
     /**
      * Make a show builder.
      *

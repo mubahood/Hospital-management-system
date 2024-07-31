@@ -13,12 +13,12 @@
         @endif
         Powered By
         <b><a class="nav-link d-inline-block p-0 text-primary" href="https://8technologies.net" target="_blank"
-                rel="noopener">TaskEase (c) 2024</a></b>
+                rel="noopener">{{ env('APP_NAME', 'GlobalHealth') }} (c) 2024</a></b>
     </div>
     <!-- Default to the left -->
     <p class="nav d-block    text-md-start pb-2 pb-lg-0 mb-0">
         {{-- Powered ❤️ by
         <b><a class="nav-link d-inline-block p-0 text-primary" href="https://twitter.com/8TechConsults"
-            target="_blank" rel="noopener">TaskEase (c) 2024</a></b> --}}
+            target="_blank" rel="noopener">env('APP_NAME', 'GlobalHealth') (c) 2024</a></b> --}}
     </p>
 </footer>
