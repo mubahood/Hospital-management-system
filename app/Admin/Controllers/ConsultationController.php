@@ -172,7 +172,7 @@ class ConsultationController extends AdminController
 
         $form->hidden('receptionist_id', __('Receptionist id'))->default($u->id);
         $form->tags('services_requested', __('Services Requested'))
-            ->options(Service::all()->pluck('name', 'name')->toArray())
+            ->options(Service::get_list())
             ->rules('required');
         $form->quill('reason_for_consultation', __('Consultation Details'))->rules('required');
 

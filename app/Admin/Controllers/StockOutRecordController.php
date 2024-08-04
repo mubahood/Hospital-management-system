@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Models\StockOutRecord;
+use App\Models\Utils;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
@@ -25,20 +26,41 @@ class StockOutRecordController extends AdminController
     protected function grid()
     {
         $grid = new Grid(new StockOutRecord());
-
-        $grid->column('id', __('Id'));
-        $grid->column('created_at', __('Created at'));
-        $grid->column('updated_at', __('Updated at'));
-        $grid->column('stock_item_id', __('Stock item id'));
-        $grid->column('stock_item_category_id', __('Stock item category id'));
-        $grid->column('unit_price', __('Unit price'));
-        $grid->column('quantity', __('Quantity'));
-        $grid->column('total_price', __('Total price'));
-        $grid->column('quantity_after', __('Quantity after'));
+        $grid->model()->orderBy('id', 'desc');
+        $grid->disableBatchActions();
+        $grid->column('id', __('Sn.'))->sortable();
+        $grid->column('created_at', __('Created'))
+            ->display(function ($created_at) {
+                return Utils::my_date_time_1($created_at);
+            })->sortable();
+        $grid->column('stock_item_id', __('Stock item'))
+            ->display(function ($stock_item_id) {
+                if ($this->stock_item == null) {
+                    return 'N/A';
+                }
+                return $this->stock_item->name;
+            })->sortable();
+        // $grid->column('stock_item_category_id', __('Stock Category'));
+        $grid->column('unit_price', __('Unit Price'))
+            ->display(function ($unit_price) {
+                return number_format($unit_price, 2);
+            })->sortable();
+        $grid->column('quantity', __('Quantity'))
+            ->display(function ($quantity) {
+                return number_format($quantity, 0) . " " . $this->measuring_unit;
+            })->sortable();
+        $grid->column('total_price', __('Total price'))
+            ->display(function ($total_price) {
+                return number_format($total_price, 2);
+            })->sortable();
+        $grid->column('quantity_after', __('Quantity after'))
+            ->display(function ($quantity_after) {
+                return number_format($quantity_after, 2);
+            })->sortable();
         $grid->column('description', __('Description'));
-        $grid->column('details', __('Details'));
-        $grid->column('measuring_unit', __('Measuring unit'));
-        $grid->column('due_date', __('Due date'));
+        // $grid->column('details', __('Details'));
+        // $grid->column('', __('Measuring unit'));
+        $grid->column('due_date', __('Due date'))->hide(); 
 
         return $grid;
     }
@@ -84,7 +106,7 @@ class StockOutRecordController extends AdminController
             ->rules('required');
         $form->decimal('quantity', __('Quantity'))->rules('required');
         $form->textarea('description', __('Description'));
-        $form->date('due_date', __('Due date'))->rules('required')->default(date('Y-m-d')); 
+        $form->date('due_date', __('Due date'))->rules('required')->default(date('Y-m-d'));
         return $form;
     }
 }

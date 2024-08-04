@@ -82,6 +82,9 @@ class StockItem extends Model
             ->orderBy('name', 'asc')
             ->get();
         foreach ($models as $model) {
+            if ($model->current_quantity <= 0) {
+                continue;
+            }
             $options[$model->id] = $model->name . ' (' . number_format($model->current_quantity) . " " . $model->measuring_unit . ')';
         }
         return $options;
@@ -91,5 +94,5 @@ class StockItem extends Model
     public function category()
     {
         return $this->belongsTo(StockItemCategory::class, 'stock_item_category_id');
-    } 
+    }
 }

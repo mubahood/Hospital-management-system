@@ -39,7 +39,7 @@ class Consultation extends Model
             foreach ($payment_records as $payment_record) {
                 $payment_record->delete();
             }
-        }); 
+        });
     }
 
     static function do_prepare($model)
@@ -123,6 +123,59 @@ class Consultation extends Model
             $consultation->process_invoice();
             $consultation->process_payment_status();
             $consultation->process_balance();
+            $consultation->process_stock_records();
+        }
+    }
+
+    public function process_stock_records()
+    {
+        if ($this->main_status == 'Completed') {
+            return;
+        }
+        if ($this->bill_status != 'Ready for Billing') {
+            return;
+        }
+
+        $amount_paid = PaymentRecord::where([
+            'consultation_id' => $this->id,
+            'payment_status' => 'Success'
+        ])->sum('amount_paid');
+
+        //loop through medical_services
+        $medical_services = $this->medical_services;
+        foreach ($medical_services as $key => $val) {
+            if (count($val->medical_service_items) < 1) {
+                continue;
+            }
+            //loop through $val->medical_service_items) 
+            foreach ($val->medical_service_items as $service_item) {
+                $stock_record = StockOutRecord::where([
+                    'consultation_id' => $this->id,
+                    'medical_service_id' => $val->id,
+                    'stock_item_id' => $service_item->id
+                ])->first();
+                if ($stock_record == null) {
+                    $stock_record = new StockOutRecord();
+                }
+                $stock_item = StockItem::find($service_item->stock_item_id);
+                if ($stock_item == null) {
+                    continue;
+                }
+
+                $stock_record->consultation_id = $this->id;
+                $stock_record->medical_service_id = $val->id;
+                $stock_record->stock_item_id = $stock_item->id;
+                $stock_record->stock_item_category_id = $stock_item->stock_item_category_id;
+                $stock_record->unit_price = $stock_item->sale_price;
+                $stock_record->quantity = $service_item->quantity;
+                $stock_record->total_price = $service_item->total_price;
+                $stock_record->quantity_after = $stock_item->quantity - $service_item->quantity;
+                $stock_record->description = $service_item->description;
+                $stock_record->measuring_unit = $stock_item->measuring_unit;
+                $stock_record->due_date = date('Y-m-d H:i:s');
+                $stock_record->details = "Stock out for " . $val->type . " - " . $val->remarks . ".";
+                $stock_record->save();
+            }
         }
     }
 
@@ -139,7 +192,7 @@ class Consultation extends Model
 
         $this->total_paid = $amount_paid;
         $this->total_due = $this->total_charges - $amount_paid;
-        if ($this->total_due <= 0) {
+        if (($this->total_due <= 0) && ($this->total_paid >= 500)) {
             $this->payemnt_status = 'Paid';
             $this->main_status = 'Completed';
         } else {
@@ -257,6 +310,11 @@ class Consultation extends Model
     public function process_payment_status()
     {
         $medical_services = $this->medical_services;
+        //count $medical_services
+        $count = count($medical_services);
+        if ($count < 1) {
+            return false;
+        }
         $isReady = true;
         foreach ($medical_services as $medical_service) {
             if ($medical_service->status != 'Completed') {

@@ -28,6 +28,10 @@ class ServiceController extends AdminController
         $grid->disableBatchActions();
         $grid->model()->orderBy('name', 'asc');
         $grid->column('name', __('Name'))->sortable();
+        //price
+        $grid->column('price', __('Price'))->display(function ($price) {
+            return 'UGX ' . number_format($price, 0);
+        })->sortable();
         $grid->column('description', __('Description'))->hide();
         $grid->column('status', __('Status'))
             ->label([
@@ -68,7 +72,7 @@ class ServiceController extends AdminController
         $form = new Form(new Service());
 
         $form->text('name', __('Name'))->rules('required');
-        $form->hidden('price', __('Price'))->default(0);
+        $form->text('price', __('Price'))->rules('required');
         $form->radio('status', __('Status'))
             ->options([
                 'Active' => 'Active',

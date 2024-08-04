@@ -18,7 +18,7 @@ class StockOutRecord extends Model
 
         //created
         static::creating(function ($model) {
-            $stockItem = StockItem::find($model->stock_item_id);
+            $stockItem = StockItem::find($model->stock_item_id); 
             if ($stockItem == null) {
                 throw new \Exception("Category not found");
             }
@@ -62,4 +62,10 @@ class StockOutRecord extends Model
     {
         return $this->belongsTo(MedicalService::class);
     }
+
+    //belongs to stock_item_id
+    public function stock_item()
+    {
+        return $this->belongsTo(StockItem::class);
+    } 
 }

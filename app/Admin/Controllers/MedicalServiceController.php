@@ -32,7 +32,13 @@ class MedicalServiceController extends AdminController
         $grid->disableCreateButton();
 
         //consulation ids of ongoing
-        $consultation_ids = Consultation::where([])->pluck('id')->toArray();
+        $consultation_ids = Consultation::where([
+            'main_status' => 'Ongoing',
+        ])
+            ->orWhere([
+                'main_status' => 'Billing',
+            ])
+            ->pluck('id')->toArray();
 
         $grid->model()
             ->whereIn('consultation_id', $consultation_ids)

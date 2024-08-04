@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Consultation;
 use App\Models\Image;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\Service;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Utils;
@@ -73,6 +75,11 @@ class ApiAuthController extends Controller
             'company_id' => $u->company_id
         ])
             ->get(), $message = "Success =>{$u->company_id}<=", 200);
+    }
+
+    public function services()
+    {
+        return $this->success(Service::all(), $message = "Success", 200);
     }
 
     public function tasks()
@@ -282,6 +289,47 @@ class ApiAuthController extends Controller
         return $this->success($new_user, 'Account created successfully.');
     }
 
+
+
+    public function consultation_create(Request $val)
+    {
+        $u = auth('api')->user();
+        if ($u == null) {
+            return Utils::response([
+                'status' => 0,
+                'code' => 0,
+                'message' => "User not found.",
+            ]);
+        }
+
+
+        $consultation = new Consultation();
+        $consultation->patient_id = $u->id;
+        $consultation->receptionist_id = $u->id;
+        $consultation->company_id = $u->company_id;
+        $consultation->main_status = 'Pending';
+        $consultation->request_status = 'Pending';
+        $consultation->patient_name = $u->name;
+        $consultation->patient_contact = $u->phone_number_1;
+        $consultation->preferred_date_and_time = $val->preferred_date_and_time;
+        $consultation->services_requested = $val->services_requested;
+        $consultation->reason_for_consultation = $val->reason_for_consultation;
+        $consultation->request_remarks = $val->request_remarks;
+        $consultation->specify_specialist = $val->specify_specialist;
+        $consultation->specialist_id = $val->specialist_id;
+        $consultation->main_remarks = $val->main_remarks;
+        $consultation->payemnt_status = 'Not Paid';
+        $consultation->request_date = Carbon::now();
+        $consultation->save();
+        $consultation = Consultation::find($consultation->id);
+
+        return Utils::response([
+            'status' => 1,
+            'data' => $consultation,
+            'code' => 1,
+            'message' => 'Consultation created successfully.',
+        ]);
+    }
 
 
     public function tasks_create(Request $val)

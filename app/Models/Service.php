@@ -16,4 +16,23 @@ class Service extends Model
             throw new \Exception('This model cannot be deleted.');
         });
     }
+
+    //array of id and name_text 
+    public static function get_list()
+    {
+        $services = Service::all();
+        $list = [];
+        foreach ($services as $service) {
+            $list[$service->id] = $service->name_text;
+        }
+        return $list;
+    }
+
+    //name_text (with price) GETTER
+    public function getNameTextAttribute()
+    {
+        return $this->name . ' (UGX Service' . number_format($this->price, 0) . ')';
+    }
+    //appends name_text
+    protected $appends = ['name_text'];
 }

@@ -30,10 +30,10 @@ class StockItemCategoryController extends AdminController
         $grid->column('id', __('Id'))->sortable()->hide();
         $grid->model()->orderBy('name', 'asc');
         $grid->column('name', __('Name'))->sortable();
-        $grid->column('description', __('Description'));
+        $grid->column('description', __('Description'))->hide();
         $grid->column('measuring_unit', __('Measuring Unit'))->sortable();
-        $grid->column('current_stock_quantity', __('Current stock quantity'))->sortable();
-        $grid->column('current_stock_value', __('Current stock value'))->sortable();
+        $grid->column('current_stock_quantity', __('Current stock quantity'))->sortable()->hide();
+        $grid->column('current_stock_value', __('Current stock value'))->sortable()->hide();
         $grid->column('reorder_level', __('Reorder level'))->hide();
         $grid->column('status', __('Status'))->label([
             'Active' => 'success',
