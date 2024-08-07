@@ -82,6 +82,24 @@ class ApiAuthController extends Controller
         return $this->success(Service::all(), $message = "Success", 200);
     }
 
+    public function consultations()
+    {
+        $u = auth('api')->user();
+        if ($u == null) {
+            return $this->error('Account not found');
+        }
+        $conds = [];
+        if (!$u->isRole('admin')) {
+            $conds['patient_id'] = $u->id;
+        }
+        return $this->success(
+            Consultation::where($conds)
+                ->get(),
+            $message = "Success",
+            200
+        );
+    }
+
     public function tasks()
     {
         $u = auth('api')->user();

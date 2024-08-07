@@ -20,6 +20,20 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 
+Route::get('medical-report', function () {
+    $id = $_GET['id'];
+    $item = Consultation::find($id);
+    if ($item == null) {
+        die('item not found');
+    }
+    $item->process_invoice();
+    $item->process_report();
+    $url = url('storage/' . $item->report_link);
+    return redirect($url);
+    die($url);;
+});
+
+
 Route::get('regenerate-invoice', function () {
     $id = $_GET['id'];
     $item = Consultation::find($id);
@@ -27,7 +41,7 @@ Route::get('regenerate-invoice', function () {
         die('item not found');
     }
     $item->process_invoice();
-    $url = url('storage/'.$item->invoice_pdf);
+    $url = url('storage/' . $item->invoice_pdf);
 
     return redirect($url);
     die($url);
@@ -41,7 +55,7 @@ Route::get('regenerate-invoice', function () {
     return $pdf->stream('test.pdf');
 });
 
- 
+
 
 Route::get('app', function () {
     //return url('taskease-v1.apk');

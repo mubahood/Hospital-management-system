@@ -141,6 +141,10 @@ class ConsultationPaymentController extends AdminController
                     return "<span class='label label-danger'>Not Genarated</span>";
                 }
             })->sortable(); */
+        $grid->column('preview', __('Preview'))->display(function () {
+            $link = url('medical-report?id=' . $this->id);
+            return "<a href='$link' target='_blank'>Preview Report</a>";
+        });
 
         $grid->column('actions', __('Actions'))
             ->display(function ($id) {

@@ -118,6 +118,10 @@ class BillingController extends AdminController
                 return number_format($id);
             })->sortable();
 
+        $grid->column('preview', __('Preview'))->display(function () {
+            $link = url('medical-report?id=' . $this->id);
+            return "<a href='$link' target='_blank'>Preview Report</a>";
+        });
         $grid->column('main_status', __('Consultation Stage'))
             ->label([
                 'Approved' => 'success',

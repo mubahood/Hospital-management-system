@@ -48,4 +48,6 @@ Route::group([
     $router->resource('consultation-payments', ConsultationPaymentController::class);
     $router->resource('payment-records', PaymentRecordController::class);
     $router->resource('progress-monitoring', ProgressMonitoringController::class);
+    $router->resource('cards', CardsController::class);
+    $router->resource('card-records', CardRecordController::class);
 });

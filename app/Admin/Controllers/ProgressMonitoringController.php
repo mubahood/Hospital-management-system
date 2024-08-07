@@ -95,6 +95,17 @@ class ProgressMonitoringController extends AdminController
                 'Rejected' => 'danger',
                 'Rescheduled' => 'warning',
             ])->sortable();
+        /* action medical-report column*/
+
+        $grid->column('preview', __('Preview'))->display(function () {
+            $link = url('medical-report?id=' . $this->id);
+            return "<a href='$link' target='_blank'>Preview Report</a>";
+        });
+        $grid->column('print', __('Print'))
+            ->display(function ($status) {
+                $link = url('medical-report?id=' . $this->id);
+                return "<a href='$link' target='_blank'>Print</a>";
+            });
         return $grid;
     }
     /**

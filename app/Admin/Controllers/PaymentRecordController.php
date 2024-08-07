@@ -69,6 +69,8 @@ class PaymentRecordController extends AdminController
         $grid->column('payment_remarks', __('Payment remarks'))->sortable();
         $grid->column('payment_phone_number', __('Payment phone number'))->hide();
 
+        
+
         return $grid;
     }
 

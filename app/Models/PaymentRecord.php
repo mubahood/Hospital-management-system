@@ -54,6 +54,21 @@ class PaymentRecord extends Model
                 throw new \Exception('Consultation not found.');
             }
             $consultation->process_balance();
+
+            //check if is card and create card record 
+            if (strtolower($model->payment_method) == 'card') {
+                $card = User::find($model->card_id);
+                if ($card == null) {
+                    throw new \Exception('Card not found.');
+                }
+                $cardRecord = new CardRecord();
+                $cardRecord->card_id = $model->card_id;
+                $cardRecord->type = 'Debit';
+                $cardRecord->amount = $model->amount_paid;
+                $cardRecord->payment_date = $model->payment_date;
+                $cardRecord->payment_remarks = '#' . $model->id . " - " . $model->description;
+                $cardRecord->save();
+            }
         });
 
         //updated
@@ -117,7 +132,7 @@ class PaymentRecord extends Model
             $m->payment_status = 'Pending';
             //generate flutterwave_payment_link
         } else {
-            throw new \Exception('Invalid payment method.');
+            //throw new \Exception('Invalid payment method.');
         }
         return $m;
     }

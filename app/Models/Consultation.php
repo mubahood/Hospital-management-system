@@ -202,9 +202,51 @@ class Consultation extends Model
     }
 
 
+    public function report_exists()
+    {
+        if ($this->report_link == null) {
+            return false;
+        }
+        if (strlen($this->report_link) < 3) {
+            return false;
+        }
+        $splits =  explode('/', $this->report_link);
+        if (count($splits) < 2) {
+            return false;
+        }
+        $last = $splits[count($splits) - 1];
+        $path = public_path('storage/files/' . $last);
+        return file_exists($path);
+    }
+    public function process_report()
+    {
+        $exists = $this->report_exists();
+        if (!$exists) {
+            if ($this->main_status == 'Complete') {
+                return;
+            }
+        }
+
+        $company = Company::find(1);
+        $pdf = App::make('dompdf.wrapper');
+        $pdf->set_option('enable_html5_parser', TRUE);
+        $pdf->loadHTML(view('medical-report', [
+            'item' => $this,
+            'company' => $company,
+        ])->render());
+        $file_name = 'report-' . $this->consultation_number . '.pdf';
+        $file_path = public_path('storage/files/' . $file_name);
+        //check if file exists
+        if (file_exists($file_path)) {
+            unlink($file_path);
+        }
+        $pdf->save($file_path);
+        $this->report_link = 'files/' . $file_name;
+        $this->save();
+    }
     public function process_invoice()
     {
-        if ($this->main_status != 'Ongoing') {
+        if ($this->main_status == 'Complete') {
             return;
         }
 

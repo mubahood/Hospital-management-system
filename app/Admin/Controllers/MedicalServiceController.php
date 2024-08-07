@@ -87,6 +87,10 @@ class MedicalServiceController extends AdminController
             ->display(function ($date) {
                 return Utils::my_date_time($date);
             })->sortable();
+        $grid->column('preview', __('Preview'))->display(function () {
+            $link = url('medical-report?id=' . $this->id);
+            return "<a href='$link' target='_blank'>Preview Report</a>";
+        });
         $grid->column('status', __('Status'))
             ->filter([
                 'Pending' => 'Pending',

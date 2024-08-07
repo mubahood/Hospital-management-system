@@ -79,7 +79,11 @@ class ConsultationController extends AdminController
         $grid->column('temperature', __('Temperature'))->sortable();
         $grid->column('weight', __('Weight'))->sortable();
         $grid->column('height', __('Height'))->sortable()->hide();
-        $grid->column('bmi', __('Bmi'))->sortable();
+        $grid->column('bmi', __('Bmi'))->sortable()->hide();
+        $grid->column('preview', __('Preview'))->display(function () {
+            $link = url('medical-report?id=' . $this->id);
+            return "<a href='$link' target='_blank'>Preview Report</a>";
+        });
 
         $grid->column('main_status', __('Status'))
             ->filter([

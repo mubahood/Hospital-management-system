@@ -32,7 +32,7 @@ class MedicalService extends Model
         'quantity',
         'unit_price',
     ];
-    
+
 
     public function consultation()
     {
@@ -48,5 +48,23 @@ class MedicalService extends Model
     public function assigned_to()
     {
         return $this->belongsTo(User::class, 'assigned_to_id');
-    } 
+    }
+
+    //items text
+    public function items_text()
+    {
+        $items = $this->medical_service_items;
+        $text = '';
+        $isFirst = true;
+        foreach ($items as $item) {
+            // $text .= $item->remarks. ', ';
+            if ($isFirst) {
+                $text .= $item->remarks;
+                $isFirst = false;
+            } else {
+                $text .= ', ' . $item->remarks;
+            }
+        }
+        return $text . '.';
+    }
 }
