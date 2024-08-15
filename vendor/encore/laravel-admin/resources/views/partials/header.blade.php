@@ -6,7 +6,7 @@ use App\Models\Utils;
 <header class="main-header">
 
     <!-- Logo -->
-    <a href="{{ admin('/') }}" class="logo">
+    <a href="{{ admin_url('/') }}" class="logo">
         <!-- mini logo for sidebar mini 50x50 pixels -->
         <span class="logo-mini">{!! env('APP_NAME', 'GlobalHealth') !!}</span>
         <!-- logo for regular state and mobile devices -->
