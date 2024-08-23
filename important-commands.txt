@@ -2,8 +2,8 @@ php artisan migrate
 
 php artisan make:migration create_courses_table
 
-php artisan make:migration add_report_link_consultations --table=consultations
+php artisan make:migration add_local_id_flutter_wave_logs --table=flutter_wave_logs
  
-php artisan admin:make CardRecordController --model=App\\Models\\CardRecord
+php artisan admin:make FlutterWaveLogController --model=App\\Models\\FlutterWaveLog
  
-php artisan make:model CardRecord -m
+php artisan make:model FlutterWaveLog -m

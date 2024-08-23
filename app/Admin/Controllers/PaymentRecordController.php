@@ -27,8 +27,7 @@ class PaymentRecordController extends AdminController
      */
     protected function grid()
     {
-        $rec = PaymentRecord::find(5);
-        $rec = PaymentRecord::prepare($rec);
+        
         $grid = new Grid(new PaymentRecord());
         $grid->disableBatchActions();
         $grid->model()->orderBy('id', 'desc');

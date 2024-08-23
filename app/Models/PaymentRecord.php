@@ -129,7 +129,7 @@ class PaymentRecord extends Model
             }
             $m->payment_status = 'Success';
         } else if ($m->payment_method == 'Flutterwave') {
-            $m->payment_status = 'Pending';
+            $m->payment_status = 'Success';
             //generate flutterwave_payment_link
         } else {
             //throw new \Exception('Invalid payment method.');

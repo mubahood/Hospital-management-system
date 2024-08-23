@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Consultation;
+use App\Models\FlutterWaveLog;
 use App\Models\Image;
 use App\Models\Meeting;
+use App\Models\PaymentRecord;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Task;
@@ -437,9 +439,11 @@ class ApiAuthController extends Controller
         $meeting->meeting_end_time = $val->session_date;
         $local_id = $val->id;
         $files = [];
-        foreach (Image::where([
-            'parent_id' => $local_id
-        ])->get() as $key => $value) {
+        foreach (
+            Image::where([
+                'parent_id' => $local_id
+            ])->get() as $key => $value
+        ) {
             $files[] = 'images/' . $value->src;
         }
         $meeting->attendance_list_pictures = $files;
@@ -569,6 +573,281 @@ class ApiAuthController extends Controller
         $u->save();
         return $this->success(null, $message = "Deleted successfully!", 1);
     }
+
+
+    public function consultation_card_payment(Request $request)
+    {
+        $u = auth('api')->user();
+        if ($u == null) {
+            return $this->error('User not found.');
+        }
+        $administrator_id = $u->id;
+
+        $u = Administrator::find($administrator_id);
+        if ($u == null) {
+            return $this->error('User not found.');
+        }
+        //check for consultation_id
+        if (
+            $request->consultation_id == null ||
+            strlen($request->consultation_id) < 1
+        ) {
+            return $this->error('Consultation ID is missing.');
+        }
+        $consultation = Consultation::find($request->consultation_id);
+        if ($consultation == null) {
+            return $this->error('Consultation not found.');
+        }
+
+        //validate amount_paid
+        if (
+            $request->amount_paid == null ||
+            strlen($request->amount_paid) < 1
+        ) {
+            return $this->error('Amount payable is missing.');
+        }
+
+        // amount_paid should be less than or equal to amount_paid
+        if (
+            $request->amount_paid > $consultation->total_due
+        ) {
+            return $this->error('Amount payable is greater than amount paid.');
+        }
+
+        //amount_payable should be more th 500
+        if (
+            $request->amount_paid < 500
+        ) {
+            return $this->error('Amount payable should be more than 500.');
+        }
+
+        //validate payment_method
+        if (
+            $request->payment_method == null ||
+            strlen($request->payment_method) < 1
+        ) {
+            return $this->error('Payment method is missing.');
+        }
+
+        $u = User::find($u->id);
+        $card = $u->get_card();
+        if ($card == null) {
+            return $this->error('Card not found.');
+        }
+
+        if ($card->card_status != 'Active') {
+            return $this->error('Card is not active. Current status is ' . $u->card_status . ".");
+        }
+
+        $amount = (int)($request->amount_paid);
+        $card_balance = (int)($card->card_balance);
+        if ($amount > $card_balance) {
+            $card_max_credit = (int)($card->card_max_credit);
+            $acceptable_credit = $card_max_credit - $card_balance;
+            if ($amount > $acceptable_credit) {
+                return $this->error('Amount payable is greater than card credit limit. (UGX ' . $card_max_credit . ")");
+            }
+        }
+
+
+        $paymentRecord = new PaymentRecord();
+        $paymentRecord->consultation_id = $consultation->id;
+        $paymentRecord->description = 'Consultation payment for ' . $consultation->name_text;
+        $paymentRecord->amount_payable = $consultation->total_due;
+        $paymentRecord->amount_paid = $amount;
+        $paymentRecord->balance = $consultation->total_due - $amount;
+        $paymentRecord->payment_date = Carbon::now();
+        $paymentRecord->payment_time = Carbon::now();
+        $paymentRecord->payment_method = $request->payment_method;
+        $paymentRecord->payment_reference = rand(100000, 999999) . rand(100000, 999999);
+        $paymentRecord->payment_status = 'Success';
+        $paymentRecord->payment_remarks = 'Payment through mobile money.';
+        $paymentRecord->payment_phone_number = $u->phone_number_1;
+        $paymentRecord->payment_channel = 'Mobile App';
+        $paymentRecord->created_by_id = $u->id;
+        $paymentRecord->cash_receipt_number = $paymentRecord->payment_reference;
+        $paymentRecord->card_id = $card->id;
+        $paymentRecord->company_id = $card->company_id;
+        $paymentRecord->card_number = $card->card_number;
+
+        try {
+            $paymentRecord->save();
+        } catch (\Throwable $th) {
+            return $this->error('Failed to save payment record.');
+        }
+        $paymentRecord = PaymentRecord::find($paymentRecord->id);
+        return $this->success($paymentRecord, $message = "Payment successful.", 1);
+    }
+
+
+
+    public function flutterwave_payment_verification(Request $request)
+    {
+        $fw = FlutterWaveLog::find($request->id);
+        if ($fw == null) {
+            return Utils::response([
+                'status' => 0,
+                'message' => "Payment record not found."
+            ]);
+        }
+        $fw->is_order_paid();
+        $fw = FlutterWaveLog::find($request->id);
+        if ($fw->status == 'Paid') {
+            return Utils::response([
+                'status' => 1,
+                'message' => "Payment successful.",
+                'data' => $fw
+            ]);
+        } else {
+            return Utils::response([
+                'status' => 0,
+                'message' => "Payment not successful.",
+                'data' => $fw
+            ]);
+        }
+    }
+    public function consultation_flutterwave_payment(Request $request)
+    {
+        $u = auth('api')->user();
+        if ($u == null) {
+            return $this->error('User not found.');
+        }
+        $administrator_id = $u->id;
+
+        $u = Administrator::find($administrator_id);
+        if ($u == null) {
+            return $this->error('User not found.');
+        }
+        //check for consultation_id
+        if (
+            $request->consultation_id == null ||
+            strlen($request->consultation_id) < 1
+        ) {
+            return $this->error('Consultation ID is missing.');
+        }
+        $consultation = Consultation::find($request->consultation_id);
+        if ($consultation == null) {
+            return $this->error('Consultation not found.');
+        }
+
+        //validate amount_paid
+        if (
+            $request->amount_paid == null ||
+            strlen($request->amount_paid) < 1
+        ) {
+            return $this->error('Amount payable is missing.');
+        }
+
+        // amount_paid should be less than or equal to amount_paid
+        if (
+            $request->amount_paid > $consultation->total_due
+        ) {
+            return $this->error('Amount payable is greater than amount paid.');
+        }
+
+        $phone_number = Utils::prepare_phone_number($request->payment_phone_number);
+
+        //check if phone number is valid
+        if (!Utils::phone_number_is_valid($phone_number)) {
+            return $this->error('Invalid phone number.');
+        }
+
+        //amount_payable should be more th 500
+        if (
+            $request->amount_paid < 500
+        ) {
+            return $this->error('Amount payable should be more than 500.');
+        }
+
+        //validate payment_method
+        if (
+            $request->payment_method == null ||
+            strlen($request->payment_method) < 1
+        ) {
+            return $this->error('Payment method is missing.');
+        }
+        $amount = (int)($request->amount_paid);
+        FlutterWaveLog::where([
+            'status' => 'Pending',
+            'consultation_id' => $consultation->id,
+        ])->delete();
+
+
+        $fw = new FlutterWaveLog();
+        $fw->consultation_id = $consultation->id;
+        $fw->flutterwave_payment_amount = $amount;
+        $fw->status = 'Pending';
+        $fw->flutterwave_payment_type = 'Consultation';
+        $fw->flutterwave_payment_customer_phone_number = $phone_number;
+        $fw->flutterwave_payment_status = 'Pending';
+        $phone_number_type = substr($phone_number, 0, 6);
+
+
+        if (
+            $phone_number_type == '+25670' ||
+            $phone_number_type == '+25675' ||
+            $phone_number_type == '+25674'
+        ) {
+            $phone_number_type = 'AIRTEL';
+        } else if (
+            $phone_number_type == '+25677' ||
+            $phone_number_type == '+25678' ||
+            $phone_number_type == '+25676'
+        ) {
+            $phone_number_type = 'MTN';
+        }
+
+        if (
+            $phone_number_type != 'MTN' &&
+            $phone_number_type != 'AIRTEL'
+        ) {
+            return Utils::response([
+                'status' => 0,
+                'message' => "Phone number must be MTN or AIRTEL. ($phone_number_type)"
+            ]);
+        }
+
+        $phone_number = str_replace([
+            '+256'
+        ], "0", $phone_number);
+
+
+
+        try {
+            $fw->uuid = Utils::generate_uuid();
+            $payment_link = $fw->generate_payment_link(
+                $phone_number,
+                $phone_number_type,
+                $amount,
+                $fw->uuid
+            );
+            if (strlen($payment_link) < 5) {
+                return Utils::response([
+                    'status' => 0,
+                    'message' => "Failed to generate payment link."
+                ]);
+            }
+            $fw->flutterwave_payment_link = $payment_link;
+            $fw->save();
+            return Utils::response([
+                'status' => 1,
+                'message' => "Payment link generated successfully.",
+                'data' => $fw
+            ]);
+        } catch (\Throwable $th) {
+            return Utils::response([
+                'status' => 0,
+                'message' => "Failed because " . $th->getMessage()
+            ]);
+        }
+
+
+
+
+
+        return $this->success($paymentRecord, $message = "Payment successful.", 1);
+    }
+
 
 
     public function update_profile(Request $request)

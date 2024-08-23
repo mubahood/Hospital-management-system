@@ -379,12 +379,24 @@ class User extends Authenticatable implements JWTSubject
     public static function get_doctors()
     {
         $users = [];
-        foreach (User::where('company_id', 1)
-            ->orderBy('name', 'asc')
-            ->get() as $key => $value) {
+        foreach (
+            User::where('company_id', 1)
+                ->orderBy('name', 'asc')
+                ->get() as $key => $value
+        ) {
             $users[$value->id] = $value->name;
         }
-
         return $users;
+    }
+
+    //get card
+    public function get_card()
+    {
+        if ($this->is_dependent == 'Yes') {
+            $c = User::find($this->dependent_id);
+            return $c;
+        } else {
+            return $this;
+        }
     }
 }

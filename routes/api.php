@@ -19,8 +19,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 
-Route::middleware([EnsureTokenIsValid::class])->group(function () {
-});
+Route::middleware([EnsureTokenIsValid::class])->group(function () {});
 Route::get('users/me', [ApiAuthController::class, 'me']);
 Route::get('users', [ApiAuthController::class, 'users']);
 Route::get('tasks', [ApiAuthController::class, 'tasks']);
@@ -29,6 +28,9 @@ Route::get('services', [ApiAuthController::class, 'services']);
 
 Route::POST("post-media-upload", [ApiAuthController::class, 'upload_media']);
 Route::POST("update-profile", [ApiAuthController::class, 'update_profile']);
+Route::POST("consultation-card-payment", [ApiAuthController::class, 'consultation_card_payment']);
+Route::POST("consultation-flutterwave-payment", [ApiAuthController::class, 'consultation_flutterwave_payment']);
+Route::POST("flutterwave-payment-verification", [ApiAuthController::class, 'flutterwave_payment_verification']);
 Route::POST("delete-account", [ApiAuthController::class, 'delete_profile']);
 Route::POST("password-change", [ApiAuthController::class, 'password_change']);
 Route::POST("tasks-create", [ApiAuthController::class, 'tasks_create']);
