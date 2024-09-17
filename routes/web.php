@@ -27,6 +27,10 @@ Route::get('medical-report', function () {
         die('item not found');
     }
     $item->process_invoice();
+
+    if (isset($_GET['html'])) {
+        return $item->process_report();
+    }
     $item->process_report();
     $url = url('storage/' . $item->report_link);
     return redirect($url);

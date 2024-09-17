@@ -1,4 +1,6 @@
 <?php
+$item->get_doses_schedule();
+die('done');
 
 //include Utils model
 use App\Models\Utils;
@@ -289,6 +291,82 @@ $logo = public_path('storage/' . $company->logo);
             </tr>
         </tbody>
     </table>
+
+
+    <hr style="border-width: 1px; color: {{ $company->color }}; border-color: black; 
+    border-style: dashed;
+    "
+        class="mb-3 mt-3">
+
+    <p class="fs-18 fw-900 text-primary mb-3">DOSAGE</p>
+    <table class="w-100 my-table ">
+        <thead class="bg-primary text-white text-uppercase">
+            <tr>
+                <td style="width: 7% " class="pb-2 pt-1 pl-2">Date</td>
+                <td class="pb-2 pt-1 pl-1" style="width: 18%">Medicine</td>
+                <td class="pb-2 pt-1 pl-1 text-center" style="">Morning
+                    <br><small>06:00am - 09:00am</small>
+                </td>
+                <td class="pb-2 pt-1 pl-1 text-center" style="">
+                    Afternoon
+                    <br><small>06:00am - 09:00am</small>
+                </td>
+                <td class="pb-2 pt-1 pl-1 text-center pr-2">
+                    Evening
+                    <br><small>06:00am - 09:00am</small>
+                </td>
+                <td class="pb-2 pt-1 pl-1 text-center pr-2">
+                    Night
+                    <br><small>06:00am - 09:00am</small>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <?php $sn = 1; ?>
+            @foreach ($item->dose_items as $dose_item)
+                <tr>
+                    <td class="pt-1 pl-2">
+                        <?php 
+                ?>
+                {{-- 
+[▼
+    "id" => 1
+    "created_at" => "2024-09-16 23:01:29"
+    "updated_at" => "2024-09-17 09:46:25"
+    "consultation_id" => 6
+    "medicine" => "Para"
+    "quantity" => 2
+    "units" => "Tablets"
+    "times_per_day" => 1
+    "number_of_days" => 5
+    "is_processed" => "Yes"
+
+
+                   "id" => 39
+    "created_at" => "2024-09-17 09:46:25"
+    "updated_at" => "2024-09-17 09:46:25"
+    "consultation_id" => 6
+    "medicine" => "Para"
+    "quantity" => 2
+    "units" => "Tablets"
+    "times_per_day" => 1
+    "number_of_days" => 5
+    "status" => "Not taken"
+    "remarks" => null
+    "due_date" => "2024-09-17 00:00:00"
+    "date_submitted" => null
+    "dose_item_id" => 1
+    "time_name" => "Morning"
+    "time_value" => "1"
+                --}}{{ $dose_item->dat }}</td>
+                    <td class="pt-1 pl-1">{{ $dose_item->type }}</td>
+                    <td class="pt-1 pl-1">{!! $dose_item->remarks !!}</td>
+                    <td class="pt-1 pl-1 text-right pr-2">{{ "s" }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
 
     <div class="mt-4 p-2" style="border: 2px solid {{ $company->color }}; ">
         <b class="text-uppercase">PAYMENTS:</b>

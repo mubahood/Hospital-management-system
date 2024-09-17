@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Barryvdh\DomPDF\PDF;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
@@ -89,6 +90,12 @@ class Consultation extends Model
         return $this->hasMany(MedicalService::class);
     }
 
+    //has many MedicalService
+    public function dose_items()
+    {
+        return $this->hasMany(DoseItem::class);
+    }
+
     //has many BillingItem
     public function billing_items()
     {
@@ -111,6 +118,60 @@ class Consultation extends Model
     public function getDetailAttribute()
     {
         return 'this->patient->name . ' - ' . $this->patient->phone_number_1';
+    }
+
+    public static function process_dosages()
+    {
+        $doses = DoseItem::where([
+            'is_processed' => 'No'
+        ])
+            ->limit(100)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        foreach ($doses as $dose) {
+            $now = Carbon::now();
+            for ($day_number = 0; $day_number < $dose->number_of_days; $day_number++) {
+                $due_date = $now->addDays($day_number)->format('Y-m-d');
+                for ($x = 1; $x <= $dose->times_per_day; $x++) {
+
+                    $dose_record = new DoseItemRecord();
+                    $dose_record->consultation_id = $dose->consultation_id;
+                    $dose_record->medicine = $dose->medicine;
+                    $dose_record->quantity = $dose->quantity;
+                    $dose_record->units = $dose->units;
+                    $dose_record->times_per_day = $dose->times_per_day;
+                    $dose_record->number_of_days = $dose->number_of_days;
+                    $dose_record->status = 'Not taken';
+                    $dose_record->remarks = null;
+                    $dose_record->due_date = $due_date;
+                    $dose_record->time_value = $x;
+                    $dose_record->date_submitted = null;
+                    $dose_record->dose_item_id = $dose->id;
+                    if ($x == 1) {
+                        $dose_record->time_name = 'Morning';
+                    } else if ($x == 2) {
+                        $dose_record->time_name = 'Afternoon';
+                    } else if ($x == 3) {
+                        $dose_record->time_name = 'Evening';
+                    } else if ($x == 4) {
+                        $dose_record->time_name = 'Night';
+                    }
+
+                    //check if exists before saving
+                    $exsisting = DoseItemRecord::where([
+                        'dose_item_id' => $dose->id,
+                        'time_name' => $dose_record->time_name,
+                        'due_date' => $dose_record->due_date,
+                    ])->first();
+                    if ($exsisting != null) {
+                        continue;
+                    }
+                    $dose_record->save();
+                }
+            }
+            $dose->is_processed = 'Yes';
+            $dose->save();
+        }
     }
 
     public static function process_ongoing_consultations()
@@ -230,6 +291,12 @@ class Consultation extends Model
         $company = Company::find(1);
         $pdf = App::make('dompdf.wrapper');
         $pdf->set_option('enable_html5_parser', TRUE);
+        if(isset($_GET['html'])){
+            return view('medical-report', [
+                'item' => $this,
+                'company' => $company,
+            ])->render();
+        }
         $pdf->loadHTML(view('medical-report', [
             'item' => $this,
             'company' => $company,
@@ -401,6 +468,51 @@ class Consultation extends Model
         return $this->consultation_number . " " . $name;
     }
 
+    //has many DrugItemRecords
+    public function drug_item_records()
+    {
+        return $this->hasMany(DoseItemRecord::class);
+    }
+    
+
     //appends for services_text
     protected $appends = ['services_text', 'name_text'];
+
+    public function get_doses_schedule(){
+        $doses = DoseItemRecord::where([
+            'consultation_id' => $this->id,
+        ])->get();
+        $dates = [];
+        foreach ($doses as $dose) {
+            //check if in arrat and continue
+            if (in_array($dose->due_date, $dates)) {
+                continue;
+            } 
+            $dates[] = $dose->due_date;
+        }
+        foreach (dates as $key => $value) {
+            # code...
+        }
+        //sort $data array
+        shuffle($data);
+        sort($data);
+
+/* 
+  0 => "2024-09-17"
+  1 => "2024-09-18"
+  2 => "2024-09-20"
+  3 => "2024-09-23"
+  4 => "2024-09-27"
+  5 => "2024-10-02"
+  6 => "2024-10-08"
+  7 => "2024-10-15"
+  8 => "2024-10-23"
+  9 => "2024-11-01"
+]
+*/
+        dd($data);
+        $data[$dose->id] = $dose->medicine . ' - ' . $dose->due_date . ' - ' . $dose->time_name;
+        dd($data);
+        return $data;
+    }
 }

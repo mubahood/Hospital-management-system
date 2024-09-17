@@ -924,31 +924,7 @@ class Utils extends Model
     {
 
         Consultation::process_ongoing_consultations();
-
-        //Companies with no financial years
-        foreach (
-            Company::where([
-                'dp_year' => NULL
-            ])->get() as $key => $company
-        ) {
-            $year = FinancialYear::where([
-                'company_id' => $company->id
-            ])->orderBy('id', 'desc')->first();
-
-            if ($year == null) {
-                $year = new FinancialYear();
-                $year->company_id = $company->id;
-                $year->name = date('Y');
-                $year->start_date = Carbon::now();
-                $year->end_date = Carbon::now()->addYears(1);
-                $year->is_active = 'Yes';
-                $year->save();
-            }
-
-            $company->dp_year = $company->id;
-            $company->active_year = $company->id;
-            $company->save();
-        }
+        Consultation::process_dosages();
         $u = Admin::user();
     }
 

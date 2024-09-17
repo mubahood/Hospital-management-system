@@ -45,6 +45,9 @@ class PaymentRecord extends Model
 
         static::updating(function ($model) {
             $model = PaymentRecord::prepare($model);
+            if (strtolower($model->payment_method) == 'card') {
+                $model->payment_status = 'Success'; 
+            }
             return $model;
         });
         //created

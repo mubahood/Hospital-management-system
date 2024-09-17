@@ -2,8 +2,8 @@ php artisan migrate
 
 php artisan make:migration create_courses_table
 
-php artisan make:migration add_local_id_flutter_wave_logs --table=flutter_wave_logs
+php artisan make:migration change_date_for_dose_item_records --table=dose_item_records
  
-php artisan admin:make FlutterWaveLogController --model=App\\Models\\FlutterWaveLog
+php artisan admin:make DoseItemRecordController --model=App\\Models\\DoseItemRecord
  
-php artisan make:model FlutterWaveLog -m
+php artisan make:model DoseItemRecord -m
