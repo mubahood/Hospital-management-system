@@ -25,6 +25,8 @@ Route::get('users', [ApiAuthController::class, 'users']);
 Route::get('tasks', [ApiAuthController::class, 'tasks']);
 Route::get('consultations', [ApiAuthController::class, 'consultations']);
 Route::get('services', [ApiAuthController::class, 'services']);
+Route::get('dose-item-records', [ApiAuthController::class, 'dose_item_records']);
+Route::POST("dose-item-records-state", [ApiAuthController::class, 'dose_item_records_state']);
 
 Route::POST("post-media-upload", [ApiAuthController::class, 'upload_media']);
 Route::POST("update-profile", [ApiAuthController::class, 'update_profile']);

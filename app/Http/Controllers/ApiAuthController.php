@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Consultation;
+use App\Models\DoseItem;
+use App\Models\DoseItemRecord;
 use App\Models\FlutterWaveLog;
 use App\Models\Image;
 use App\Models\Meeting;
@@ -82,6 +84,41 @@ class ApiAuthController extends Controller
     public function services()
     {
         return $this->success(Service::all(), $message = "Success", 200);
+    }
+    public function dose_item_records()
+    {
+        $u = auth('api')->user();
+        if ($u == null) {
+            return $this->error('Account not found');
+        }
+        $my_consultations = Consultation::where([
+            'patient_id' => $u->id
+        ])->get();
+        $consultation_ids = [];
+        foreach ($my_consultations as $key => $value) {
+            $consultation_ids[] = $value->id;
+        }
+        $recs = DoseItemRecord::whereIn('consultation_id', $consultation_ids)
+            ->get();
+        return $this->success($recs, $message = "Success", 200); 
+    }
+
+
+    public function dose_item_records_state(Request $r)
+    {
+        $rec = DoseItemRecord::find($r->id);
+        if ($rec == null) {
+            return $this->error('Record not found.');
+        }
+        $due_date = Carbon::parse($rec->due_date);
+        //check if is future date and dont accept
+        if ($due_date->isFuture()) {
+            return $this->error('Cannot change state of future record.');
+        }
+        $rec->status = $r->status;
+        $rec->save();
+        $rec = DoseItemRecord::find($r->id);
+        return $this->success($rec, $message = "Success", 200);
     }
 
     public function consultations()
