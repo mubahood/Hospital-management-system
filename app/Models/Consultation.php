@@ -291,7 +291,7 @@ class Consultation extends Model
         $company = Company::find(1);
         $pdf = App::make('dompdf.wrapper');
         $pdf->set_option('enable_html5_parser', TRUE);
-        if(isset($_GET['html'])){
+        if (isset($_GET['html'])) {
             return view('medical-report', [
                 'item' => $this,
                 'company' => $company,
@@ -473,12 +473,13 @@ class Consultation extends Model
     {
         return $this->hasMany(DoseItemRecord::class);
     }
-    
+
 
     //appends for services_text
     protected $appends = ['services_text', 'name_text'];
 
-    public function get_doses_schedule(){
+    public function get_doses_schedule()
+    {
         $doses = DoseItemRecord::where([
             'consultation_id' => $this->id,
         ])->get();
@@ -487,17 +488,58 @@ class Consultation extends Model
             //check if in arrat and continue
             if (in_array($dose->due_date, $dates)) {
                 continue;
-            } 
+            }
             $dates[] = $dose->due_date;
         }
-        foreach (dates as $key => $value) {
-            # code...
-        }
-        //sort $data array
-        shuffle($data);
-        sort($data);
+        $data = [];
+        foreach ($dates as $key => $date) {
+            $recs = DoseItemRecord::where([
+                'consultation_id' => $this->id,
+                'due_date' => $date,
+            ])->get();
+            $d['date'] = $date;
+            $d['day'] = Carbon::parse($date)->format('l');
+            $morning = [];
+            $afternoon = [];
+            $evening = [];
+            $night = [];
 
-/* 
+            foreach ($recs as $rec) {
+                if ($rec->time_value == 1) {
+                    $morning[] = $rec;
+                } else if ($rec->time_value == 2) {
+                    $afternoon[] = $rec;
+                } else if ($rec->time_value == 3) {
+                    $evening[] = $rec;
+                } else if ($rec->time_value == 4) {
+                    $night[] = $rec;
+                }
+            }
+            $d['morning'] = $morning;
+            $d['afternoon'] = $afternoon;
+            $d['evening'] = $evening;
+            $d['night'] = $night;
+            $data[] = $d;
+        }
+
+
+        /* 
+          "id" => 1
+          "created_at" => "2024-09-17 09:44:55"
+          "updated_at" => "2024-09-17 09:44:55"
+          "consultation_id" => 6
+          "medicine" => "Asprin"
+          "quantity" => 2
+          "units" => "Mills"
+          "times_per_day" => 3
+          "number_of_days" => 2
+          "status" => "Not taken"
+          "remarks" => null
+          "due_date" => "2024-09-17"
+          "date_submitted" => null
+          "dose_item_id" => 3
+          "time_name" => "Morning"
+          "time_value" => "1"
   0 => "2024-09-17"
   1 => "2024-09-18"
   2 => "2024-09-20"
@@ -510,9 +552,6 @@ class Consultation extends Model
   9 => "2024-11-01"
 ]
 */
-        dd($data);
-        $data[$dose->id] = $dose->medicine . ' - ' . $dose->due_date . ' - ' . $dose->time_name;
-        dd($data);
         return $data;
     }
 }
