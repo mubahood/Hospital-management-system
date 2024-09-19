@@ -36,7 +36,7 @@ if ($style == 'danger') {
             <i class="bi bi-{{ $icon }} fs-40"></i>
         </div>
         <div style="height: 4.5rem;" class="">
-            <p class="fs-18 fw-400 mt-2 mb-2 {{ $text }} ">{{ $title }}</p>
+            <p class="fs-18 fw-400 mt-2 mb-2 {!! $text !!} ">{!! $title !!}</p>
         </div>
         <p class="m-0 text-right {{ $text2 }} fw-800 fs-34">{{ $number }}</p>
     </div>

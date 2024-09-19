@@ -20,29 +20,29 @@ if (!isset($tasks_count)) {
             <div class="col-md-4">
                 @include('widgets.box-6', [
                     'is_dark' => false,
-                    'title' => 'Done Tasks',
+                    'title' => 'Pending Consultations',
                     'icon' => 'box',
-                    'number' => $tasks_done,
-                    'link' => admin_url('tasks?manager_submission_status=Done'),
+                    'number' => $pending_tasks_count,
+                    'link' => admin_url('consultations'),
                 ])
             </div>
             <div class="col-md-4">
                 @include('widgets.box-6', [
                     'is_dark' => false,
-                    'title' => 'Not Attended To',
+                    'title' => 'Ongoing Consultations',
                     'icon' => 'list-task',
-                    'number' => $tasks_missed,
-                    'link' => admin_url('tasks?manager_submission_status=Not+Attended+To'),
+                    'number' => $ongoing_tasks_count,
+                    'link' => admin_url('progress-monitoring?&main_status%5B%5D=Ongoing'),
                 ])
 
             </div>
             <div class="col-md-4">
                 @include('widgets.box-6', [
                     'is_dark' => true,
-                    'title' => 'Not Submitted',
+                    'title' => 'Pending<br>Tasks',
                     'icon' => 'calendar-event-fill',
-                    'number' => $tasks_not_submitted,
-                    'link' => admin_url('tasks-pending'),
+                    'number' => $my_tasks_count,
+                    'link' => admin_url('medical-services'),
                 ])
             </div>
         </div>
@@ -50,15 +50,15 @@ if (!isset($tasks_count)) {
 </div>
 <div class="row">
     <div class="col-md-6">
-        @include('dashboard.tasks', [
-            'items' => $pending_tasks,
-            'title' => 'Pending tasks',
+        @include('dashboard.consultations-payments', [
+            'items' => $pending_for_payment,
+            'title' => 'Pending payments',
         ])
     </div>
     <div class="col-md-6">
         @include('dashboard.tasks', [
-            'items' => $tasks_done_list,
-            'title' => 'Completed tasks',
+            'items' => $ongoing_tasks,
+            'title' => 'Pending tasks',
         ])
     </div>
 </div>

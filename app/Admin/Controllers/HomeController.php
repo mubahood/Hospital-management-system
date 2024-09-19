@@ -3,7 +3,9 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Consultation;
 use App\Models\Event;
+use App\Models\MedicalService;
 use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\Task;
@@ -65,32 +67,27 @@ class HomeController extends Controller
                     $tasks_not_submitted_condition['assigned_to'] = $u->id;
                 }
 
-                $start_of_week = Carbon::now()->startOfMonth();
-                $end_of_week = Carbon::now()->endOfMonth();
-
-                $events = Utils::prepare_calendar_tasks($u);
                 $column->append(view('widgets.dashboard-segment-1', [
-                    'events' => $events,
-                    'tasks_done' => (Task::where($tasks_done_condition)
-                        ->whereBetween('updated_at', [$start_of_week, $end_of_week])
-                        ->count() +
-                        Task::where($tasks_done_late_condition)
-                        ->whereBetween('updated_at', [$start_of_week, $end_of_week])
-                        ->count()),
-                    'tasks_missed' => Task::where($tasks_missed_condition)
-                        ->whereBetween('updated_at', [$start_of_week, $end_of_week])
-                        ->count(),
-                    'tasks_not_submitted' => Task::where($tasks_not_submitted_condition)
-                        ->count(),
-                    'meetings' => Meeting::where([
-                        'company_id' => $u->company_id,
-                    ])->where(
-                        [/* 'event_date', '>=', Carbon::now()->format('Y-m-d') */]
-                    )->orderBy('id', 'desc')->limit(5)->get(),
-                    'pending_tasks' => Task::where($tasks_not_submitted_condition)
-                        ->orderBy('id', 'desc')->limit(5)->get(),
-                    'tasks_done_list' => Task::where($tasks_done_condition)
-                        ->orderBy('id', 'desc')->limit(5)->get()
+                    'pending_tasks_count' => Consultation::where([
+                        'main_status' => 'Pending'
+                    ])->count(),
+
+                    'ongoing_tasks_count' => Consultation::where([
+                        'main_status' => 'Ongoing'
+                    ])->count(),
+
+                    'my_tasks_count' => MedicalService::where([
+                        "status" => "Pending"
+                    ])->count(),
+                    'pending_for_payment' => Consultation::where(
+                        "total_due",
+                        '>',
+                        0
+                    )->get(),
+                    'ongoing_tasks' => MedicalService::where([
+                        'status' => 'Pending'
+                    ])->limit(10)
+                        ->get()
                 ]));
             });
             $row->column(6, function (Column $column) {
@@ -101,28 +98,5 @@ class HomeController extends Controller
 
         return $content;
     }
-
-    public function calendar(Content $content)
-    {
-        $u = Auth::user();
-        $content
-            ->title('Company Calendar');
-        $content->row(function (Row $row) {
-            $row->column(8, function (Column $column) {
-                $column->append(Dashboard::dashboard_calender());
-            });
-            $row->column(4, function (Column $column) {
-                $u = Admin::user();
-                $column->append(view('dashboard.upcoming-events', [
-                    'items' => Meeting::where([])
-                        ->where([/* 'event_date', '>=', Carbon::now()->format('Y-m-d') */])
-                        ->orderBy('id', 'desc')->limit(8)->get()
-                ]));
-            });
-        });
-        return $content;
-
-
-        return $content;
-    }
+ 
 }

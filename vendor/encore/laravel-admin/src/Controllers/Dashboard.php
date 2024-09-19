@@ -17,6 +17,7 @@ class Dashboard
     public static function dashboard_calender()
     { 
         $events = Utils::prepare_calendar_events(Auth::user());
+ 
         return view('dashboard.calender', [
             'events' => $events
         ]);
