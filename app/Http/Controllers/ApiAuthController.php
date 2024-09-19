@@ -369,7 +369,11 @@ class ApiAuthController extends Controller
         $consultation->patient_name = $u->name;
         $consultation->patient_contact = $u->phone_number_1;
         $consultation->preferred_date_and_time = $val->preferred_date_and_time;
-        $consultation->services_requested = $val->services_requested;
+        $services_requested = $val->services_requested;
+        $services_requested = str_replace('[', ',', $services_requested);
+        $services_requested = str_replace(']', ',', $services_requested); 
+        
+        $consultation->services_requested = $services_requested;
         $consultation->reason_for_consultation = $val->reason_for_consultation;
         $consultation->request_remarks = $val->request_remarks;
         $consultation->specify_specialist = $val->specify_specialist;
