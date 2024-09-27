@@ -97,16 +97,16 @@ class EmployeesController extends AdminController
         $grid->column('masters_university_name')->hide();
         $grid->column('masters_university_year_graduated')->hide();
         $grid->column('phd_university_name')->hide();
-        $grid->column('can_evaluate', 'Evaluate')
+/*         $grid->column('can_evaluate', 'Evaluate')
             ->label([
                 'Yes' => 'success',
                 'No' => 'danger',
-            ])->sortable();
-        $grid->column('work_load_pending', 'Work Load (Hours)')->sortable();
-        $grid->column('work_load_completed', 'Work Accomplished (In Hours)')->sortable();
+            ])->sortable(); */
+        // $grid->column('work_load_pending', 'Work Load (Hours)')->sortable();
+        // $grid->column('work_load_completed', 'Work Accomplished (In Hours)')->sortable();
 
-        $grid->column('rate')->sortable()
-            ->label('primary');
+  /*       $grid->column('rate')->sortable()
+            ->label('primary'); */
         $grid->column('week', 'Report')
             ->display(function ($x) {
                 $url = url("/departmental-workplan?id={$this->id}");
@@ -245,11 +245,11 @@ class EmployeesController extends AdminController
                 'autocomplete' => 'off'
             ])
             ->options(
-                $roleModel
+                AdminRole::where([])->get()->pluck('name', 'id')
             )->rules('required');
 
         $permissionModel = config('admin.database.permissions_model');
-        $form->multipleSelect('permissions', trans('admin.permissions'))->options($permissionModel::all()->pluck('name', 'id'));
+        // $form->multipleSelect('permissions', trans('admin.permissions'))->options($permissionModel::all()->pluck('name', 'id'));
 
         $form->divider('SYSTEM ACCOUNT');
         $form->image('avatar', trans('admin.avatar'));
@@ -262,11 +262,8 @@ class EmployeesController extends AdminController
             ->creationRules(["unique:admin_users"])
             ->updateRules(['required', "unique:admin_users,username,{{id}}"]); */
 
-        $form->radio('can_evaluate', 'Should be evaluate?')
-            ->options([
-                'Yes' => 'Yes',
-                'No' => 'No',
-            ])->default('No');
+        // hidden can_evaluate as yes
+        $form->hidden('can_evaluate')->default('Yes');
 
         $form->radio('change_password', 'Change Password')
             ->options([

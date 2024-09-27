@@ -163,7 +163,7 @@ class ConsultationController extends AdminController
                 . "search_by_1=name"
                 . "&search_by_2=id"
                 . "&model=User"
-                . "&query_user_type=Patient"
+                // . "&query_user_type=Patient"
         );
         $form->select('patient_id', "Select Patient")
             ->options(function ($id) {
@@ -205,7 +205,7 @@ class ConsultationController extends AdminController
             })->when('Rejected', function ($form) {
                 $form->text('request_remarks', __('Message to the applicant'))->rules('required');
             })->rules('required')
-            ->when('in', ['Approved', 'Ongoing'], function ($form) {
+            ->when('in', [ 'Ongoing'], function ($form) {
                 $form->divider('Medical Services');
                 $u = Admin::user();
                 //hidden receptionist_id

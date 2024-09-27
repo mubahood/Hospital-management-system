@@ -23,7 +23,7 @@ class Service extends Model
         $services = Service::all();
         $list = [];
         foreach ($services as $service) {
-            $list[$service->id] = $service->name_text;
+            $list[$service->id] = $service->name;
         }
         return $list;
     }

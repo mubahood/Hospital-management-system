@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -33,6 +34,23 @@ class CardRecord extends Model
             $card = User::find($model->card_id);
             if ($card == null) {
                 throw new \Exception('Card not found');
+            }
+
+            if ($card->is_dependent == 'Yes') {
+                throw new \Exception('Dependent card cannot be used');
+            }
+
+            //card_status
+            if ($card->card_status != 'Active') {
+                throw new \Exception('Card is not active');
+            }
+
+            //card_expiry
+            if ($card->card_expiry != null) {
+                $card_expiry = Carbon::parse($card->card_expiry);
+                if ($card_expiry->lt(Carbon::now())) {
+                    throw new \Exception('Card has expired on ' . $card_expiry->format('Y-m-d'));
+                }
             }
 
             $balance = 0;

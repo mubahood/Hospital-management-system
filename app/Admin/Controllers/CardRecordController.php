@@ -106,6 +106,7 @@ class CardRecordController extends AdminController
                 return $remarks;
             })->sortable();
 
+        $grid->disableActions();
         return $grid;
     }
 

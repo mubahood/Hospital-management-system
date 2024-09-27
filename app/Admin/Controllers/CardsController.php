@@ -32,6 +32,7 @@ class CardsController extends AdminController
     protected function grid()
     {
         $grid = new Grid(new User());
+        $grid->disableCreateButton();
         $grid->actions(function ($actions) {
             $actions->disableDelete();
         });
@@ -40,13 +41,10 @@ class CardsController extends AdminController
         if ($u != null && $u->company_id != 1) {
             $conds['company_id'] = $u->company_id;
         }
-        $grid->model(
-            'card_number',
-            '!=',
-            null
-        )
-            ->orderBy('id', 'Desc')
-            ->where($conds);
+        $grid->model()->where([
+            'is_dependent' => 'No',
+        ])->orderBy('id', 'Desc');
+
         $grid->actions(function ($actions) {
             //$actions->disableView();
         });
@@ -58,7 +56,17 @@ class CardsController extends AdminController
                     ->where('slug', '!=', 'student')
                     ->get()
                     ->pluck('name', 'id'));
+
+            $filter->equal('company_id', 'Company')->select(function () {
+                $a = Company::where([])->get();
+                $arr = [];
+                foreach ($a as $b) {
+                    $arr[$b->id] = $b->name;
+                }
+                return $arr;
+            });
         });
+
 
 
         $grid->quickSearch('name')->placeholder('Search by name');
@@ -95,6 +103,9 @@ class CardsController extends AdminController
                     $x = 0;
                 }
                 return number_format($x);
+            })->sortable()
+            ->totalRow(function ($amount) {
+                return "<b><span class='text-primary'>Total: " . number_format($amount) . "</span></b>";
             });
         return $grid;
     }
@@ -133,53 +144,16 @@ class CardsController extends AdminController
         $form->divider('BIO DATA');
 
         $u = Admin::user();
-        $form->text('first_name')->rules('required');
-        $form->text('last_name')->rules('required');
-        $form->date('date_of_birth');
-        $form->text('place_of_birth');
-        $form->radioCard('sex', 'Gender')->options(['Male' => 'Male', 'Female' => 'Female'])->rules('required');
-        $form->text('phone_number_1', 'Mobile phone number')->rules('required');
-        $form->text('phone_number_2', 'Home phone number');
-        $form->text('current_address', 'Address')->rules('required');
+        $form->display('first_name');
+        $form->display('last_name');
 
-
-
-        $form->divider('PERSONAL INFORMATION');
-
-        $form->radioCard('has_personal_info', 'Add personal information?')
-            ->options([
-                'Yes' => 'Yes',
-                'No' => 'No',
-            ])->when('Yes', function ($form) {
-                $form->text('religion');
-                $form->text('nationality');
-                $form->text('home_address');
-
-                $form->text('spouse_name', "Spouse's name");
-                $form->text('spouse_phone', "Spouse's phone number");
-                $form->text('father_name', "Father's name");
-                $form->text('father_phone', "Father's phone number");
-                $form->text('mother_name', "Mother's name");
-                $form->text('mother_phone', "Mother's phone number");
-
-                $form->text('languages', "Languages/Dilect");
-                $form->text('emergency_person_name', "Emergency person to contact name");
-                $form->text('emergency_person_phone', "Emergency person to contact phone number");
-            });
-
-        $form->divider('COMPANY SETTINGS');
-        $form->radioCard('belongs_to_company', 'Does this patient belong to a company?')
-            ->options(['Yes' => 'Yes', 'No' => 'No'])
-            ->when('Yes', function ($form) {
-                $form->select('company_id', 'Company')->options(Company::pluck('name', 'id'))->rules('required');
-                $form->radioCard('belongs_to_company_status', 'Company Status')->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Deactive']);
-            })->rules('required');
         $form->divider('CARD SETTINGS');
+        $form->disableCreatingCheck();
 
         $form->radioCard('is_dependent', 'Is this patient a dependent?')->options(['Yes' => 'Yes', 'No' => 'No'])
             ->when('Yes', function ($form) {
                 /* dependent_id */
-                $form->select('dependent_id', 'Dependent')->options(User::where([
+                $form->select('dependent_id', 'Select card')->options(User::where([
                     'user_type' => 'Patient',
                     'is_dependent' => 'No',
                 ])->pluck('name', 'id'))->rules('required');
@@ -205,42 +179,6 @@ class CardsController extends AdminController
 
 
         $permissionModel = config('admin.database.permissions_model');
-
-        $form->divider('SYSTEM ACCOUNT');
-        $form->image('avatar', 'Photo');
-
-        $form->text('email', 'Email address')
-            ->creationRules(["unique:admin_users"])
-            ->rules();
-
-
-        if ($form->isCreating()) {
-            $form->password('password', 'Password')->rules('required|confirmed');
-            $form->password('password_confirmation', 'Password Confirmation')->rules('required')
-                ->default(function ($form) {
-                    return $form->model()->password;
-                });
-        } else {
-
-            $form->radio('change_password', 'Change Password')
-                ->options([
-                    'Change Password' => 'Change Password',
-                    'Dont Change Password' => 'Dont Change Password'
-                ])->when('Change Password', function ($form) {
-                    $form->password('password', trans('admin.password'))->rules('confirmed');
-                    $form->password('password_confirmation', trans('admin.password_confirmation'))
-                        ->default(function ($form) {
-                            return $form->model()->password;
-                        });
-                });
-        }
-        $form->ignore(['password_confirmation', 'change_password']);
-        $form->saving(function (Form $form) {
-            if ($form->password && $form->model()->password != $form->password) {
-                $form->password = Hash::make($form->password);
-            }
-        });
-
 
 
 

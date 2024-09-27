@@ -27,7 +27,7 @@ class PaymentRecordController extends AdminController
      */
     protected function grid()
     {
-        
+
         $grid = new Grid(new PaymentRecord());
         $grid->disableBatchActions();
         $grid->model()->orderBy('id', 'desc');
@@ -68,7 +68,7 @@ class PaymentRecordController extends AdminController
         $grid->column('payment_remarks', __('Payment remarks'))->sortable();
         $grid->column('payment_phone_number', __('Payment phone number'))->hide();
 
-        
+
 
         return $grid;
     }
@@ -181,6 +181,20 @@ class PaymentRecordController extends AdminController
             })
             ->when('Card', function ($form) {
 
+                /* $consultation = null;
+                $id = null;
+                if (isset($_GET['id'])) {
+                    $id = $_GET['id'];
+                    $consultation = \App\Models\Consultation::find($id);
+                    if ($consultation != null) {
+                        $hasConsultation = true;
+                    }
+                }
+                $card_id = null;
+                if ($consultation != null) {
+                    $card_id = $consultation->id;
+                }
+ */
                 $ajax_url = url(
                     '/api/ajax-cards'
                 );

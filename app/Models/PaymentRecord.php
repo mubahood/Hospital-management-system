@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -46,7 +47,7 @@ class PaymentRecord extends Model
         static::updating(function ($model) {
             $model = PaymentRecord::prepare($model);
             if (strtolower($model->payment_method) == 'card') {
-                $model->payment_status = 'Success'; 
+                $model->payment_status = 'Success';
             }
             return $model;
         });
@@ -109,6 +110,9 @@ class PaymentRecord extends Model
         $m->description = 'Paid ' . number_format($m->amount_paid) . ' for consultation ' . $consultation->consultation_number . ", " . $consultation->services_text . ".";
         $m->amount_payable = $consultation->total_due;
         $m->balance = $m->amount_payable - $m->amount_paid;
+
+        //if m->balance is less than 0, then throw exception
+
         if ($m->payment_date == null || strlen($m->payment_date) < 5) {
             $m->payment_date = date('Y-m-d H:i:s');
         }
@@ -127,13 +131,37 @@ class PaymentRecord extends Model
             $m->payment_status = 'Success';
         } else if ($m->payment_method == 'Mobile Money') {
             $m->payment_phone_number = Utils::prepare_phone_number($m->payment_phone_number);
-            if (!Utils::is_valid_phone_number($m->payment_phone_number)) {
+            if (!Utils::phone_number_is_valid($m->payment_phone_number)) {
                 throw new \Exception('Invalid phone number.');
             }
             $m->payment_status = 'Success';
         } else if ($m->payment_method == 'Flutterwave') {
             $m->payment_status = 'Success';
             //generate flutterwave_payment_link
+        }
+        if ($m->payment_method == 'Card') {
+            $card = User::find($m->card_id);
+            if ($card == null) {
+                throw new \Exception('Card not found.');
+            }
+            if ($card->is_dependent == 'Yes') {
+                throw new \Exception('Dependent card cannot be used');
+            }
+
+            //card_status
+            if ($card->card_status != 'Active') {
+                throw new \Exception('Card is not active');
+            }
+
+            //card_expiry
+            if ($card->card_expiry != null) {
+                $card_expiry = Carbon::parse($card->card_expiry);
+                if ($card_expiry->lt(Carbon::now())) {
+                    throw new \Exception('Card has expired on ' . $card_expiry->format('Y-m-d'));
+                }
+            }
+
+            $m->payment_status = 'Success';
         } else {
             //throw new \Exception('Invalid payment method.');
         }
