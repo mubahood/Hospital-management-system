@@ -975,10 +975,10 @@ class ApiAuthController extends Controller
                         return $this->error('Email is already taken.');
                     }
                 }
-                //validate email
-                if (!filter_var($request->email, FILTER_VALIDATE_EMAIL)) {
-                    return $this->error('Invalid email address.');
-                }
+                // //validate email
+                // if (!filter_var($request->email, FILTER_VALIDATE_EMAIL)) {
+                //     return $this->error('Invalid email address.');
+                // }
             }
         }
 
