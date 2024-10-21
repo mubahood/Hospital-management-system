@@ -309,21 +309,7 @@ class ApiAuthController extends Controller
 
         $user->phone_number_1 = $phone_number;
         $user->username = $phone_number;
-        $user->reg_number = $phone_number;
-        $user->country = $phone_number;
-        $user->occupation = $phone_number;
-        $user->profile_photo_large = '';
-        $user->location_lat = '';
-        $user->location_long = '';
-        $user->facebook = '';
-        $user->twitter = '';
-        $user->linkedin = '';
-        $user->website = '';
-        $user->other_link = '';
-        $user->cv = '';
-        $user->language = '';
-        $user->about = '';
-        $user->home_address = '';
+        $user->email = $r->email;
         $user->name = $name;
         $user->password = password_hash(trim($r->password), PASSWORD_DEFAULT);
         if (!$user->save()) {
