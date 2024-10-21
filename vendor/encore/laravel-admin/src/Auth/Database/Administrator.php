@@ -90,7 +90,7 @@ class Administrator extends Model implements AuthenticatableContract, JWTSubject
         self::creating(function ($m) {
 
             if (!Utils::validateEmail($m->email)) {
-                throw new \Exception("Invalid email address");
+                // throw new \Exception("Invalid email address");
             }
 
             $n = $m->first_name . " " . $m->last_name;

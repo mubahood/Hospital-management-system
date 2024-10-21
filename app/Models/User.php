@@ -29,7 +29,7 @@ class User extends Authenticatable implements JWTSubject
             $m->email = trim($m->email);
             if ($m->email != null && strlen($m->email) > 3) {
                 if (!Utils::validateEmail($m->email)) {
-                    throw new \Exception("Invalid email address");
+                    // throw new \Exception("Invalid email address");
                 } else {
                     //check if email exists
                     $u = User::where('email', $m->email)->first();
@@ -161,7 +161,7 @@ class User extends Authenticatable implements JWTSubject
             $m->email = trim($m->email);
             if ($m->email != null && strlen($m->email) > 3) {
                 if (!Utils::validateEmail($m->email)) {
-                    throw new \Exception("Invalid email address");
+                    // throw new \Exception("Invalid email address");
                 } else {
                     //check if email exists
                     $u = User::where('email', $m->email)->first();
