@@ -280,11 +280,7 @@ class ApiAuthController extends Controller
         if ($r->name == null) {
             return $this->error('Name is required.');
         }
-
-
-
-
-
+ 
         $u = Administrator::where('phone_number_1', $phone_number)
             ->orWhere('username', $phone_number)->first();
         if ($u != null) {
