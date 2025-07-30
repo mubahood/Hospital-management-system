@@ -536,7 +536,7 @@ CREATE TABLE `companies` (
 --
 
 INSERT INTO `companies` (`id`, `created_at`, `updated_at`, `name`, `short_name`, `details`, `logo`, `phone_number`, `phone_number_2`, `p_o_box`, `email`, `address`, `website`, `subdomain`, `color`, `welcome_message`, `type`, `wallet_balance`, `can_send_messages`, `has_valid_lisence`, `administrator_id`, `dp_year`, `active_year`) VALUES
-(1, '2023-09-27 12:46:19', '2024-07-20 07:53:59', 'GLOBAL HEALTH WOMEN & CHILDREN HOSPITAL LTD', 'GHWCH', 'GLOBAL HEALTH WOMEN & CHILDREN HOSPITAL LTD', 'images/263b38535c823aa400285c4fc9084d9b.png', '+256701273341', '+256785218461', 'P.O.Box 8234 Kampala Uganda', 'procurement@globalhealthrescue.com', 'Plot 4 Kampala Road Abaita Ababiri Entebbe Uganda', 'https://www.qesuqyzylomyda.ws', '8tech', '#099794', '<p>Autem saepe consequa.</p>', 'Ut rerum a commodo e', NULL, NULL, NULL, 1, 1, 1),
+(1, '2023-09-27 12:46:19', '2024-07-20 07:53:59', 'TechQNEST - Hospital Management System LTD', 'GHWCH', TechQNEST - Hospital Management System LTD', 'images/263b38535c823aa400285c4fc9084d9b.png', '+256701273341', '+256785218461', 'P.O.Box 8234 Kampala Uganda', 'procurement@globalhealthrescue.com', 'Plot 4 Kampala Road Abaita Ababiri Entebbe Uganda', 'https://www.qesuqyzylomyda.ws', '8tech', '#099794', '<p>Autem saepe consequa.</p>', 'Ut rerum a commodo e', NULL, NULL, NULL, 1, 1, 1),
 (2, '2023-09-27 14:09:30', '2023-11-30 00:11:33', 'Eight Technologies Consults', '8Tech', NULL, 'images/607eeda23a09508c45389c606403d84f.png', '0783204665', NULL, 'P.O. BOX 36859, Kampala', 'info@8technologies.net', 'Magdalene Lane Opposite Ndere Cultural Centre, Ntinda - Kisaasi Rd, Kampala', NULL, NULL, '#07b0dc', NULL, NULL, NULL, NULL, NULL, 2, 2, 2);
 
 -- --------------------------------------------------------
