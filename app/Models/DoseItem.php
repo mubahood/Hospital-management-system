@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\StandardBootTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DoseItem extends Model
 {
-    use HasFactory;
+    use HasFactory, StandardBootTrait;
 
     protected $fillable = [
         'created_at',
@@ -21,13 +22,20 @@ class DoseItem extends Model
         'is_processed',
     ];
 
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
+        
+        // Call standardized boot methods
+        static::bootStandardBootTrait();
+    }
 
-        static::deleting(function ($doseItemRecord) {
-            $doseItemRecord->doseItemRecords()->delete();
-        });
+    /**
+     * Handle pre-deletion logic - called by StandardBootTrait
+     */
+    protected static function onDeleting($model): void
+    {
+        $model->doseItemRecords()->delete();
     }
 
     //has many

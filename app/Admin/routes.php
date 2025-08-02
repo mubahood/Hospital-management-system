@@ -39,6 +39,12 @@ Route::group([
     $router->resource('gens', GenController::class);
 
     $router->resource('consultations', ConsultationController::class);
+    
+    // Appointment Calendar Routes
+    $router->get('/appointments/calendar', 'ConsultationController@calendar')->name('appointments.calendar');
+    $router->post('/api/appointments/calendar', 'ConsultationController@calendarApi')->name('api.appointments.calendar');
+    $router->post('/api/appointments/{id}/status', 'ConsultationController@updateStatus')->name('api.appointments.status');
+    
     $router->resource('services', ServiceController::class);
     $router->resource('medical-services', MedicalServiceController::class);
     $router->resource('stock-item-categories', StockItemCategoryController::class);

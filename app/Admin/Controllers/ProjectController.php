@@ -219,7 +219,7 @@ class ProjectController extends AdminController
                 $form->hidden('progress', __('Progress'))->default(0);
             }
         })->tab('Project Sections', function ($form) {
-            $form->hasMany('project_sections', 'Project Deliverables', function (Form\NestedForm $form) {
+            $form->hasMany('projectSections', 'Project Deliverables', function (Form\NestedForm $form) {
                 $form->text('name', __('Deliverable Name'))->rules('required');
                 $form->textarea('section_description', __('Deliverable Description'));
                 $form->text('progress', 'Deliverable Progress Percentage (out of 100%)')

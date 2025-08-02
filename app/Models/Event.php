@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
+use App\Traits\StandardBootTrait;
 use Carbon\Carbon;
 use Encore\Admin\Auth\Database\Administrator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,21 +11,47 @@ use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait, StandardBootTrait;
 
-    public static function boot()
+    protected $fillable = [
+        'enterprise_id',
+        'administrator_id',
+        'title',
+        'description',
+        'event_date',
+        'start_time',
+        'end_time',
+        'location',
+        'event_conducted',
+        'event_type'
+    ];
+
+    protected static function boot(): void
     {
         parent::boot();
-        self::creating(function ($m) {
-            $m->event_conducted = 'Pending';
-            return Event::my_update($m);
-        });
-        self::updating(function ($m) {
-            return Event::my_update($m);
-        });
+        
+        // Call standardized boot methods
+        static::bootStandardBootTrait();
     }
 
-    public function get_participants()
+    /**
+     * Handle model creation logic - called by StandardBootTrait
+     */
+    protected static function onCreating($model): void
+    {
+        $model->event_conducted = 'Pending';
+        Event::my_update($model);
+    }
+
+    /**
+     * Handle model updating logic - called by StandardBootTrait
+     */
+    protected static function onUpdating($model): void
+    {
+        Event::my_update($model);
+    }
+
+    public function participants()
     {
         $users = [];
         $users[] = $this->user;
@@ -32,9 +60,9 @@ class Event extends Model
         return $users;
     }
 
-    public function get_participants_names()
+    public function participantNames()
     {
-        $users = $this->get_participants();
+        $users = $this->participants();
         $names = [];
         foreach ($users as $u) {
             if ($u == null) {

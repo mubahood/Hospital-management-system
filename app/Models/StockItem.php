@@ -2,51 +2,87 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
+use App\Traits\StandardBootTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class StockItem extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait, StandardBootTrait;
+
+    protected $fillable = [
+        'enterprise_id',
+        'stock_item_category_id',
+        'name',
+        'description',
+        'unit_price',
+        'original_quantity',
+        'current_quantity',
+        'min_quantity',
+        'expiry_date',
+        'barcode',
+        'sku'
+    ];
 
     //boot
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
-        static::deleting(function ($model) {
-            throw new \Exception('This model cannot be deleted.');
-        });
+        
+        // Call standardized boot methods
+        static::bootStandardBootTrait();
+    }
 
-        //boot
-        static::creating(function ($model) {
-            $model = StockItem::preparing($model);
-            $model->current_quantity = $model->original_quantity;
-        });
+    /**
+     * Handle pre-deletion logic - called by StandardBootTrait
+     */
+    protected static function onDeleting($model): void
+    {
+        throw new \Exception('This model cannot be deleted.');
+    }
 
-        //updating
-        static::updating(function ($model) {
-            $model = StockItem::preparing($model);
-        });
+    /**
+     * Handle model creation logic - called by StandardBootTrait
+     */
+    protected static function onCreating($model): void
+    {
+        $model = StockItem::preparing($model);
+        $model->current_quantity = $model->original_quantity;
+    }
 
-        //updated
-        static::updated(function ($model) {
-            $cat = StockItemCategory::find($model->stock_item_category_id);
-            if ($cat != null) {
-                $cat->update_quantities();
-            }
-        });
+    /**
+     * Handle model updating logic - called by StandardBootTrait
+     */
+    protected static function onUpdating($model): void
+    {
+        $model = StockItem::preparing($model);
+    }
 
-        //created
-        static::created(function ($model) {
-            $cat = StockItemCategory::find($model->stock_item_category_id);
-            if ($cat != null) {
-                $cat->update_quantities();
-            }
-        });
+    /**
+     * Handle post-update logic - called by StandardBootTrait
+     */
+    protected static function onUpdated($model): void
+    {
+        $cat = StockItemCategory::find($model->stock_item_category_id);
+        if ($cat != null) {
+            $cat->update_quantities();
+        }
+    }
+
+    /**
+     * Handle post-creation logic - called by StandardBootTrait
+     */
+    protected static function onCreated($model): void
+    {
+        $cat = StockItemCategory::find($model->stock_item_category_id);
+        if ($cat != null) {
+            $cat->update_quantities();
+        }
     }
 
     //has many StockOutRecord
-    public function stock_out_records()
+    public function stockOutRecords()
     {
         return $this->hasMany(StockOutRecord::class);
     }

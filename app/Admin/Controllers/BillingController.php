@@ -276,14 +276,14 @@ class BillingController extends AdminController
 
 
         $form->divider('Medical Services Offered');
-        $form->hasMany('medical_services', null, function (Form\NestedForm $form) {
+        $form->hasMany('medicalServices', null, function (Form\NestedForm $form) {
             $form->select('type', __('Service'))
                 ->options(Service::all()->pluck('name', 'name')->toArray())
                 ->readOnly();
             $form->textarea('remarks', __('Remarks'))->readonly();
             // assigned_to_id assign to specialist or doctor
             /* $form->select('assigned_to_id', __('Conducted By'))
-                ->options(User::get_doctors())
+                ->options(User::getDoctors())
                 ->readOnly(); */
             //status hide as hidden
             $form->hidden('status', __('Status'))->default('Pending');
@@ -298,8 +298,8 @@ class BillingController extends AdminController
 
 
 
-        //has many billing_items
-        $form->hasMany('billing_items', 'Add fees or charges', function (Form\NestedForm $form) {
+        //has many billingItems
+        $form->hasMany('billingItems', 'Add fees or charges', function (Form\NestedForm $form) {
             $form->radio('type', __('Billing Item Type'))
                 ->options([
                     'Discount' => 'Discount',

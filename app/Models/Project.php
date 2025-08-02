@@ -2,15 +2,33 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
+use App\Traits\StandardBootTrait;
 use Encore\Admin\Auth\Database\Administrator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Project extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait, StandardBootTrait;
 
-    public static function get_array($where = [])
+    protected $fillable = [
+        'enterprise_id',
+        'name',
+        'short_name',
+        'description',
+        'details',
+        'logo',
+        'budget_overview',
+        'schedule_overview',
+        'risks_issues',
+        'concerns_recommendations',
+        'status',
+        'company_id',
+        'administrator_id'
+    ];
+
+    public static function getArray($where = [])
     {
         $sections = Project::where($where)
         ->orderBy('short_name', 'asc')
@@ -24,15 +42,24 @@ class Project extends Model
 
 
     //boot
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
-        static::deleting(function ($project) {
-            //if id is 1, do not delete
-            if ($project->id == 1) {
-                return false;
-            }
-        });
+        
+        // Call standardized boot methods
+        static::bootStandardBootTrait();
+    }
+
+    /**
+     * Handle pre-deletion logic - called by StandardBootTrait
+     */
+    protected static function onDeleting($model): bool
+    {
+        //if id is 1, do not delete
+        if ($model->id == 1) {
+            return false;
+        }
+        return true;
     }
 
     public static function update_progress($project_id)
@@ -54,7 +81,7 @@ class Project extends Model
         $project->save();
     }
 
-    public function project_sections()
+    public function projectSections()
     {
         return $this->hasMany(ProjectSection::class);
     }

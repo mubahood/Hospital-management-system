@@ -301,7 +301,7 @@ class TaskController extends AdminController
         $form = new Form(new Task());
         $u = Auth::user();
         $form->hidden('company_id', __('Company'))->default($u->company_id);
-        $sections  = Project::get_array([
+        $sections  = Project::getArray([
             'company_id' => $u->company_id,
         ]);
 

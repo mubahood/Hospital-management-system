@@ -96,6 +96,13 @@ class HomeController extends Controller
             });
         });
 
+        // Add appointment statistics row
+        $content->row(function (Row $row) {
+            $row->column(12, function (Column $column) {
+                $column->append(new \App\Admin\Widgets\AppointmentStats());
+            });
+        });
+
         return $content;
     }
  

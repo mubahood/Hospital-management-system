@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MedicalServiceItem extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait;
     //create fillables for 	id	created_at	updated_at	medical_service_id	stock_item_id	description	file	quantity	unit_price	total_price	remarks	
 
     protected $fillable = [
+        'enterprise_id',
         'id',
         'created_at',
         'updated_at',

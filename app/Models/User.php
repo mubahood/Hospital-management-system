@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
+use App\Traits\StandardBootTrait;
+use App\Traits\DataEncryption;
 use Encore\Admin\Form\Field\BelongsToMany;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +20,210 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasFactory;
     use Notifiable;
+    use EnterpriseScopeTrait;
+    use StandardBootTrait;
+    use DataEncryption;
 
+    protected $fillable = [
+        'enterprise_id',
+        'name',
+        'email',
+        'password',
+        'first_name',
+        'last_name',
+        'username',
+        'phone_number_1',
+        'phone_number_2',
+        'date_of_birth',
+        'place_of_birth',
+        'sex',
+        'home_address',
+        'current_address',
+        'nationality',
+        'religion',
+        'spouse_name',
+        'spouse_phone',
+        'father_name',
+        'father_phone',
+        'mother_name',
+        'mother_phone',
+        'languages',
+        'emergency_person_name',
+        'emergency_person_phone',
+        'national_id_number',
+        'passport_number',
+        'tin',
+        'nssf_number',
+        'bank_name',
+        'bank_account_number',
+        'marital_status',
+        'title',
+        'company_id',
+        'user_type',
+        'avatar',
+        'intro',
+        'rate',
+        'belongs_to_company',
+        'card_status',
+        'card_number',
+        'card_balance',
+        'card_accepts_credit',
+        'card_max_credit',
+        'card_accepts_cash',
+        'is_dependent',
+        'dependent_status',
+        'dependent_id',
+        'card_expiry',
+        'belongs_to_company_status',
+        // Medical fields
+        'medical_history',
+        'allergies',
+        'current_medications',
+        'insurance_provider',
+        'insurance_policy_number',
+        'insurance_expiry_date',
+        'family_doctor_name',
+        'family_doctor_phone',
+        'employment_status',
+        'employer_name',
+        'annual_income',
+        'education_level'
+    ];
+
+    /**
+     * Fields that should be encrypted for data protection
+     *
+     * @var array
+     */
+    protected $encryptedFields = [
+        'home_address',
+        'current_address',
+        'emergency_person_name',
+        'emergency_person_phone',
+        'spouse_phone',
+        'father_phone',
+        'mother_phone',
+        'medical_history',
+        'allergies',
+        'current_medications',
+        'insurance_policy_number',
+        'family_doctor_name',
+        'family_doctor_phone',
+        'annual_income'
+    ];
+
+    /**
+     * Fields that should be hashed (one-way encryption)
+     *
+     * @var array
+     */
+    protected $hashedFields = [
+        'password'
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'date_of_birth' => 'date',
+        'card_expiry' => 'date',
+        'card_balance' => 'decimal:2',
+        'card_max_credit' => 'decimal:2',
+        'card_accepts_cash' => 'boolean',
+        'deleted_at' => 'datetime',
+    ];
+
+    /**
+     * Query scope for patients only
+     */
+    public function scopePatients($query)
+    {
+        return $query->where('user_type', 'patient');
+    }
+
+    /**
+     * Query scope for doctors only
+     */
+    public function scopeDoctors($query)
+    {
+        return $query->where('user_type', 'doctor');
+    }
+
+    /**
+     * Query scope for nurses only
+     */
+    public function scopeNurses($query)
+    {
+        return $query->where('user_type', 'nurse');
+    }
+
+    /**
+     * Query scope for administrative staff
+     */
+    public function scopeAdministrators($query)
+    {
+        return $query->where('user_type', 'administrator');
+    }
+
+    /**
+     * Query scope for active users
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Query scope for users by gender
+     */
+    public function scopeByGender($query, $gender)
+    {
+        return $query->where('sex', $gender);
+    }
+
+    /**
+     * Query scope for users by age range
+     */
+    public function scopeByAgeRange($query, $minAge, $maxAge = null)
+    {
+        $query->whereNotNull('date_of_birth');
+        $query->where('date_of_birth', '<=', now()->subYears($minAge));
+        
+        if ($maxAge) {
+            $query->where('date_of_birth', '>=', now()->subYears($maxAge));
+        }
+        
+        return $query;
+    }
+
+    /**
+     * Query scope for searching users
+     */
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+              ->orWhere('last_name', 'like', "%{$search}%")
+              ->orWhere('name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%")
+              ->orWhere('phone_number_1', 'like', "%{$search}%")
+              ->orWhere('phone_number_2', 'like', "%{$search}%")
+              ->orWhere('national_id_number', 'like', "%{$search}%");
+        });
+    }
 
 
     public static function boot()
@@ -32,12 +238,12 @@ class User extends Authenticatable implements JWTSubject
                     // throw new \Exception("Invalid email address");
                 } else {
                     //check if email exists
-                    $u = User::where('email', $m->email)->first();
+                    $u = User::withoutGlobalScope('enterprise')->where('email', $m->email)->first();
                     if ($u != null) {
                         throw new \Exception("Email already exists");
                     }
                     //check if username exists
-                    $u = User::where('username', $m->email)->first();
+                    $u = User::withoutGlobalScope('enterprise')->where('username', $m->email)->first();
                     if ($u != null) {
                         throw new \Exception("Email as Username already exists");
                     }
@@ -359,9 +565,75 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Task::class, 'assigned_to');
     }
 
+    /**
+     * Relationship to consultations (for patients)
+     */
+    public function consultations()
+    {
+        return $this->hasMany(Consultation::class, 'patient_id');
+    }
+
+    /**
+     * Relationship to consultations as doctor
+     */
+    public function doctorConsultations()
+    {
+        return $this->hasMany(Consultation::class, 'doctor_id');
+    }
+
+    /**
+     * Relationship to medical services (for patients)
+     */
+    public function medicalServices()
+    {
+        return $this->belongsToMany(MedicalService::class, 'medical_service_items')
+                    ->withPivot(['quantity', 'price', 'total'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Relationship to billing items (for patients)
+     */
+    public function billingItems()
+    {
+        return $this->hasMany(BillingItem::class, 'patient_id');
+    }
+
+    /**
+     * Relationship to payment records (for patients)
+     */
+    public function paymentRecords()
+    {
+        return $this->hasMany(PaymentRecord::class, 'patient_id');
+    }
+
+    /**
+     * Relationship to the dependent user (if this user is a dependent)
+     */
+    public function dependentOf()
+    {
+        return $this->belongsTo(User::class, 'dependent_id');
+    }
+
+    /**
+     * Relationship to dependents (users who are dependents of this user)
+     */
+    public function dependents()
+    {
+        return $this->hasMany(User::class, 'dependent_id');
+    }
+
+    /**
+     * Relationship to enterprise
+     */
+    public function enterprise()
+    {
+        return $this->belongsTo(Enterprise::class);
+    }
+
 
     //appends
-    protected $appends = ['short_name'];
+    protected $appends = ['short_name', 'full_name', 'age', 'formatted_phone'];
 
     public function getShortNameAttribute()
     {
@@ -374,13 +646,180 @@ class User extends Authenticatable implements JWTSubject
         return $letter_1 . ". " . $this->last_name;
     }
 
+    /**
+     * Get full name attribute
+     */
+    public function getFullNameAttribute()
+    {
+        return trim($this->first_name . ' ' . $this->last_name);
+    }
+
+    /**
+     * Get age attribute
+     */
+    public function getAgeAttribute()
+    {
+        if (!$this->date_of_birth) {
+            return null;
+        }
+        
+        // Convert to Carbon if it's a string
+        $birthDate = $this->date_of_birth instanceof \Carbon\Carbon 
+            ? $this->date_of_birth 
+            : \Carbon\Carbon::parse($this->date_of_birth);
+            
+        return $birthDate->age;
+    }
+
+    /**
+     * Get formatted phone attribute
+     */
+    public function getFormattedPhoneAttribute()
+    {
+        return $this->phone_number_1 ?: $this->phone_number_2 ?: 'N/A';
+    }
+
+    /**
+     * Get patient number for patients
+     */
+    public function getPatientNumberAttribute()
+    {
+        if ($this->user_type === 'patient') {
+            $id = $this->id ?: 0;
+            return 'PAT-' . str_pad((string)$id, 6, '0', STR_PAD_LEFT);
+        }
+        return null;
+    }
+
+    /**
+     * Check if user is a patient
+     */
+    public function isPatient()
+    {
+        return $this->user_type === 'patient';
+    }
+
+    /**
+     * Check if user is a doctor
+     */
+    public function isDoctor()
+    {
+        return $this->user_type === 'doctor';
+    }
+
+    /**
+     * Check if user is a nurse
+     */
+    public function isNurse()
+    {
+        return $this->user_type === 'nurse';
+    }
+
+    /**
+     * Check if user is an administrator
+     */
+    public function isAdministrator()
+    {
+        return $this->user_type === 'administrator';
+    }
+
+    /**
+     * Check if user has active consultations
+     */
+    public function hasActiveConsultations()
+    {
+        if (!$this->isPatient()) {
+            return false;
+        }
+        
+        return $this->consultations()
+                    ->where('status', 'active')
+                    ->exists();
+    }
+
+    /**
+     * Get total medical costs for patient
+     */
+    public function getTotalMedicalCosts()
+    {
+        if (!$this->isPatient()) {
+            return 0;
+        }
+        
+        return $this->billingItems()->sum('total');
+    }
+
+    /**
+     * Get outstanding payments for patient
+     */
+    public function getOutstandingPayments()
+    {
+        if (!$this->isPatient()) {
+            return 0;
+        }
+        
+        $totalBilled = $this->getTotalMedicalCosts();
+        $totalPaid = $this->paymentRecords()->sum('amount');
+        
+        return max(0, $totalBilled - $totalPaid);
+    }
+
+    /**
+     * Get latest consultation for patient
+     */
+    public function getLatestConsultation()
+    {
+        if (!$this->isPatient()) {
+            return null;
+        }
+        
+        return $this->consultations()
+                    ->latest()
+                    ->first();
+    }
+
+    /**
+     * Static method to get patients for select dropdown
+     */
+    public static function getPatientsForSelect()
+    {
+        return static::patients()
+                    ->orderBy('first_name')
+                    ->get()
+                    ->pluck('full_name', 'id')
+                    ->toArray();
+    }
+
+    /**
+     * Static method to get doctors for select dropdown
+     */
+    public static function getDoctorsForSelect()
+    {
+        return static::doctors()
+                    ->orderBy('first_name')
+                    ->get()
+                    ->pluck('full_name', 'id')
+                    ->toArray();
+    }
+
+    /**
+     * Static method to search patients
+     */
+    public static function searchPatients($search)
+    {
+        return static::patients()
+                    ->search($search)
+                    ->orderBy('first_name')
+                    ->get();
+    }
+
     //get doctors list
 
-    public static function get_doctors()
+    public static function getDoctors()
     {
         $users = [];
         foreach (
-            User::where('company_id', 1)
+            User::doctors()
                 ->orderBy('name', 'asc')
                 ->get() as $key => $value
         ) {
@@ -390,7 +829,7 @@ class User extends Authenticatable implements JWTSubject
     }
 
     //get card
-    public function get_card()
+    public function getCard()
     {
         if ($this->is_dependent == 'Yes') {
             $c = User::find($this->dependent_id);

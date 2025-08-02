@@ -2,12 +2,26 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Meeting extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait;
+
+    protected $fillable = [
+        'enterprise_id',
+        'title',
+        'description',
+        'meeting_date',
+        'start_time',
+        'end_time',
+        'location',
+        'attendance_list_pictures',
+        'minutes',
+        'status'
+    ];
 
     public function setAttendanceListPicturesAttribute($pictures)
     {

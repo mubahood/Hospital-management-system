@@ -2,12 +2,25 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Target extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait;
+
+    protected $fillable = [
+        'enterprise_id',
+        'department_id',
+        'user_id',
+        'title',
+        'description',
+        'target_date',
+        'status',
+        'files',
+        'notes'
+    ];
 
     //department
     public function department()

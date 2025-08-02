@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
+use App\Traits\StandardBootTrait;
 use Barryvdh\DomPDF\PDF;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,45 +14,327 @@ use Illuminate\Support\Facades\Auth;
 class Consultation extends Model
 {
     use HasFactory;
+    use EnterpriseScopeTrait;
+    use StandardBootTrait;
 
-    //boot
-    protected static function boot()
+    protected $fillable = [
+        'enterprise_id',
+        'consultation_number',
+        'patient_id',
+        'patient_name',
+        'patient_contact',
+        'contact_address',
+        'receptionist_id',
+        'consultation_fee',
+        'request_date',
+        'request_remarks',
+        'receptionist_comment',
+        'status',
+        'main_status',
+        'company_id',
+        'preferred_date_and_time',
+        'services_requested',
+        'reason_for_consultation',
+        'main_remarks',
+        'request_status',
+        'temperature',
+        'weight',
+        'height',
+        'bmi',
+        'total_charges',
+        'total_paid',
+        'total_due',
+        'payemnt_status',
+        'subtotal',
+        'fees_total',
+        'discount',
+        'invoice_processed',
+        'invoice_pdf',
+        'invoice_process_date',
+        'bill_status',
+        'specify_specialist',
+        'specialist_id',
+        'report_link',
+        'dosage_progress',
+        'dosage_is_completed',
+        // Enhanced appointment scheduling fields
+        'doctor_id',
+        'department_id',
+        'appointment_date',
+        'appointment_end_date', 
+        'duration_minutes',
+        'appointment_type',
+        'priority',
+        'room_id',
+        'equipment_ids',
+        'is_recurring',
+        'recurrence_type',
+        'recurrence_interval',
+        'recurrence_end_date',
+        'parent_consultation_id',
+        'preparation_instructions',
+        'sms_reminder_sent',
+        'email_reminder_sent',
+        'reminder_sent_at',
+        'confirmation_required',
+        'confirmed_at',
+        'confirmed_by',
+        'checked_in_at',
+        'started_at',
+        'completed_at',
+        'created_by',
+        'updated_by',
+        'cancellation_reason',
+        'cancelled_at',
+        'cancelled_by'
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'request_date' => 'datetime',
+        'preferred_date_and_time' => 'datetime',
+        'invoice_process_date' => 'datetime',
+        'temperature' => 'decimal:1',
+        'weight' => 'decimal:2',
+        'height' => 'decimal:2',
+        'bmi' => 'decimal:2',
+        'total_charges' => 'decimal:2',
+        'total_paid' => 'decimal:2',
+        'total_due' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'fees_total' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'consultation_fee' => 'decimal:2',
+        'invoice_processed' => 'boolean',
+        'dosage_is_completed' => 'boolean',
+        // Enhanced appointment scheduling casts
+        'appointment_date' => 'datetime',
+        'appointment_end_date' => 'datetime',
+        'recurrence_end_date' => 'date',
+        'is_recurring' => 'boolean',
+        'sms_reminder_sent' => 'boolean',
+        'email_reminder_sent' => 'boolean',
+        'reminder_sent_at' => 'datetime',
+        'confirmation_required' => 'boolean',
+        'confirmed_at' => 'datetime',
+        'checked_in_at' => 'datetime',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'equipment_ids' => 'array',
+    ];
+
+    /**
+     * Query scope for active consultations
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('main_status', 'Active');
+    }
+
+    /**
+     * Query scope for completed consultations
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->where('main_status', 'Completed');
+    }
+
+    /**
+     * Query scope for pending consultations
+     */
+    public function scopePending($query)
+    {
+        return $query->where('main_status', 'Pending');
+    }
+
+    /**
+     * Query scope for cancelled consultations
+     */
+    public function scopeCancelled($query)
+    {
+        return $query->where('main_status', 'Cancelled');
+    }
+
+    /**
+     * Query scope for paid consultations
+     */
+    public function scopePaid($query)
+    {
+        return $query->where('payemnt_status', 'Paid');
+    }
+
+    /**
+     * Query scope for unpaid consultations
+     */
+    public function scopeUnpaid($query)
+    {
+        return $query->where('payemnt_status', '!=', 'Paid');
+    }
+
+    /**
+     * Query scope for consultations by doctor
+     */
+    public function scopeByDoctor($query, $doctorId)
+    {
+        return $query->where('specialist_id', $doctorId);
+    }
+
+    /**
+     * Query scope for consultations by patient
+     */
+    public function scopeByPatient($query, $patientId)
+    {
+        return $query->where('patient_id', $patientId);
+    }
+
+    /**
+     * Query scope for consultations within date range
+     */
+    public function scopeDateRange($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('created_at', [$startDate, $endDate]);
+    }
+
+    /**
+     * Query scope for today's consultations
+     */
+    public function scopeToday($query)
+    {
+        return $query->whereDate('created_at', today());
+    }
+
+    /**
+     * Query scope for this month's consultations
+     */
+    public function scopeThisMonth($query)
+    {
+        return $query->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year);
+    }
+
+
+    /**
+     * Boot the model with standardized event handling.
+     */
+    protected static function boot(): void
     {
         parent::boot();
+    }
 
-        static::creating(function ($model) {
-            $model = Consultation::do_prepare($model);
-        });
+    /**
+     * Custom logic before creating/updating a consultation.
+     */
+    protected function processCustomBeforeSave(): void
+    {
+        $this->prepareConsultationData();
+    }
 
-        static::updating(function ($model) {
-            $model = Consultation::do_prepare($model);
-        });
+    /**
+     * Custom logic before deleting a consultation.
+     */
+    protected function processCustomBeforeDelete(): void
+    {
+        // Delete related medical services
+        $medical_services = $this->medicalServices;
+        foreach ($medical_services as $medical_service) {
+            $medical_service->delete();
+        }
 
-        //deleting
-        static::deleting(function ($model) {
-            $medical_services = $model->medical_services;
-            foreach ($medical_services as $medical_service) {
-                $medical_service->delete();
-            }
-            $billing_items = $model->billing_items;
-            foreach ($billing_items as $billing_item) {
-                $billing_item->delete();
-            }
-            $payment_records = $model->payment_records;
-            foreach ($payment_records as $payment_record) {
-                $payment_record->delete();
-            }
-        });
+        // Delete related billing items
+        $billing_items = $this->billingItems;
+        foreach ($billing_items as $billing_item) {
+            $billing_item->delete();
+        }
+
+        // Delete related payment records
+        $payment_records = $this->paymentRecords;
+        foreach ($payment_records as $payment_record) {
+            $payment_record->delete();
+        }
+    }
+
+    /**
+     * Prepare consultation data.
+     */
+    private function prepareConsultationData(): void
+    {
+        $this->validatePatient();
+        $this->generateConsultationNumber();
+        $this->setDefaultValues();
+        $this->calculateTotals();
+    }
+
+    /**
+     * Validate that patient exists.
+     */
+    private function validatePatient(): void
+    {
+        $patient = User::withoutGlobalScope('enterprise')->find($this->patient_id);
+        if (!$patient) {
+            throw new \Exception('Patient not found');
+        }
+    }
+
+    /**
+     * Generate consultation number if not set.
+     */
+    private function generateConsultationNumber(): void
+    {
+        if (!$this->consultation_number) {
+            $this->consultation_number = 'CON-' . date('Y') . '-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
+        }
+    }
+
+    /**
+     * Set default values for consultation.
+     */
+    private function setDefaultValues(): void
+    {
+        if (!$this->request_date) {
+            $this->request_date = now();
+        }
+
+        if (!$this->main_status) {
+            $this->main_status = 'Pending';
+        }
+
+        if (!$this->request_status) {
+            $this->request_status = 'Pending';
+        }
+
+        if (!$this->bill_status) {
+            $this->bill_status = 'Pending';
+        }
+
+        if (!$this->payemnt_status) {
+            $this->payemnt_status = 'Pending';
+        }
+    }
+
+    /**
+     * Calculate consultation totals.
+     */
+    private function calculateTotals(): void
+    {
+        // This can be expanded based on business logic
+        if (!$this->total_charges && $this->consultation_fee) {
+            $this->total_charges = $this->consultation_fee;
+        }
     }
 
     static function do_prepare($model)
     {
-        $patient = User::find($model->patient_id);
+        $patient = User::withoutGlobalScope('enterprise')->find($model->patient_id);
         if ($patient == null) {
             throw new \Exception('Patient not found');
         }
         $patient->company_id = $model->company_id;
-        $receptionist = User::find($model->receptionist_id);
+        $receptionist = User::withoutGlobalScope('enterprise')->find($model->receptionist_id);
         $loggedUser = Auth::user();
         if ($loggedUser == null) {
             $loggedUser = $patient;
@@ -85,19 +369,19 @@ class Consultation extends Model
     }
 
     //has many MedicalService
-    public function medical_services()
+    public function medicalServices()
     {
         return $this->hasMany(MedicalService::class);
     }
 
-    //has many MedicalService
-    public function dose_items()
+    //has many DoseItem
+    public function doseItems()
     {
         return $this->hasMany(DoseItem::class);
     }
 
     //has many BillingItem
-    public function billing_items()
+    public function billingItems()
     {
         return $this->hasMany(BillingItem::class);
     }
@@ -112,6 +396,114 @@ class Consultation extends Model
     public function receptionist()
     {
         return $this->belongsTo(User::class, 'receptionist_id');
+    }
+
+    //belongs to specialist_id or doctor_id (for backwards compatibility and appointment functionality)
+    public function doctor()
+    {
+        // Support both old specialist_id and new doctor_id for appointment functionality
+        $doctorId = $this->doctor_id ?? $this->specialist_id;
+        return $this->belongsTo(User::class, 'doctor_id')->orWhere('id', $this->specialist_id);
+    }
+
+    //belongs to specialist_id
+    public function specialist()
+    {
+        return $this->belongsTo(User::class, 'specialist_id');
+    }
+
+    //belongs to company
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    //belongs to enterprise
+    public function enterprise()
+    {
+        return $this->belongsTo(Enterprise::class);
+    }
+
+    /**
+     * Get the consultation's formatted number
+     */
+    public function getFormattedNumberAttribute()
+    {
+        return 'CONS-' . str_pad($this->id, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Get the consultation's duration in days
+     */
+    public function getDurationAttribute()
+    {
+        if (!$this->created_at) {
+            return 0;
+        }
+        return $this->created_at->diffInDays(now());
+    }
+
+    /**
+     * Check if consultation is overdue
+     */
+    public function getIsOverdueAttribute()
+    {
+        if ($this->main_status === 'Completed') {
+            return false;
+        }
+        
+        return $this->created_at->diffInDays(now()) > 7; // 7 days threshold
+    }
+
+    /**
+     * Get BMI category
+     */
+    public function getBmiCategoryAttribute()
+    {
+        if (!$this->bmi) {
+            return null;
+        }
+        
+        if ($this->bmi < 18.5) {
+            return 'Underweight';
+        } elseif ($this->bmi < 25) {
+            return 'Normal';
+        } elseif ($this->bmi < 30) {
+            return 'Overweight';
+        } else {
+            return 'Obese';
+        }
+    }
+
+    /**
+     * Calculate BMI automatically
+     */
+    public function calculateBmi()
+    {
+        if ($this->weight && $this->height) {
+            $heightInMeters = $this->height / 100;
+            $this->bmi = $this->weight / ($heightInMeters * $heightInMeters);
+        }
+    }
+
+    /**
+     * Check if consultation has outstanding balance
+     */
+    public function hasOutstandingBalance()
+    {
+        return $this->total_due > 0;
+    }
+
+    /**
+     * Get payment completion percentage
+     */
+    public function getPaymentCompletionPercentage()
+    {
+        if ($this->total_charges <= 0) {
+            return 100;
+        }
+        
+        return ($this->total_paid / $this->total_charges) * 100;
     }
 
     //detail getter
@@ -203,13 +595,13 @@ class Consultation extends Model
         ])->sum('amount_paid');
 
         //loop through medical_services
-        $medical_services = $this->medical_services;
+        $medical_services = $this->medicalServices;
         foreach ($medical_services as $key => $val) {
-            if (count($val->medical_service_items) < 1) {
+            if (count($val->medicalServiceItems) < 1) {
                 continue;
             }
-            //loop through $val->medical_service_items) 
-            foreach ($val->medical_service_items as $service_item) {
+            //loop through $val->medicalServiceItems) 
+            foreach ($val->medicalServiceItems as $service_item) {
                 $stock_record = StockOutRecord::where([
                     'consultation_id' => $this->id,
                     'medical_service_id' => $val->id,
@@ -317,14 +709,14 @@ class Consultation extends Model
             return;
         }
 
-        $medical_services = $this->medical_services;
+        $medical_services = $this->medicalServices;
         $subtotal = 0;
         foreach ($medical_services as $medical_service) {
             $isFirst = true;
             $medical_service->remarks = null;
             $medical_service->total_price = 0;
 
-            foreach ($medical_service->medical_service_items as $medical_service_item) {
+            foreach ($medical_service->medicalServiceItems as $medical_service_item) {
                 $stock_item = StockItem::find($medical_service_item->stock_item_id);
                 if ($stock_item == null) {
                     throw new \Exception('Stock item not found. #' . $medical_service_item->stock_item_id);
@@ -348,7 +740,7 @@ class Consultation extends Model
 
         $medical_services = 0;
         $discount = 0;
-        foreach ($this->billing_items as $billing_item) {
+        foreach ($this->billingItems as $billing_item) {
             if ($billing_item->type == 'Discount') {
                 $discount += (float)($billing_item->price);
             } else {
@@ -401,7 +793,7 @@ class Consultation extends Model
     //getter for services_text
     public function getServicesTextAttribute()
     {
-        $medical_services = $this->medical_services;
+        $medical_services = $this->medicalServices;
         $text = '';
         $isFirst = true;
         foreach ($medical_services as $medical_service) {
@@ -418,7 +810,7 @@ class Consultation extends Model
     //getter for is_ready_for_billing
     public function process_payment_status()
     {
-        $medical_services = $this->medical_services;
+        $medical_services = $this->medicalServices;
         //count $medical_services
         $count = count($medical_services);
         if ($count < 1) {
@@ -441,12 +833,12 @@ class Consultation extends Model
     }
 
     //has many PaymentRecords
-    public function payment_records()
+    public function paymentRecords()
     {
         return $this->hasMany(PaymentRecord::class);
     }
 
-    public static function get_payble_consultations()
+    public static function getPayableConsultations()
     {
         $consultations = Consultation::where([
             'main_status' => 'Payment',
@@ -469,7 +861,7 @@ class Consultation extends Model
     }
 
     //has many DrugItemRecords
-    public function drug_item_records()
+    public function drugItemRecords()
     {
         return $this->hasMany(DoseItemRecord::class);
     }
@@ -478,7 +870,326 @@ class Consultation extends Model
     //appends for services_text
     protected $appends = ['services_text', 'name_text'];
 
-    public function get_doses_schedule()
+    // ============================================
+    // APPOINTMENT SCHEDULING METHODS
+    // ============================================
+
+    /**
+     * Appointment type constants
+     */
+    public static function getAppointmentTypes()
+    {
+        return [
+            'consultation' => 'Consultation',
+            'follow_up' => 'Follow Up',
+            'surgery' => 'Surgery',
+            'procedure' => 'Procedure',
+            'lab_test' => 'Lab Test',
+            'imaging' => 'Imaging',
+            'therapy' => 'Therapy',
+            'vaccination' => 'Vaccination',
+            'emergency' => 'Emergency'
+        ];
+    }
+
+    /**
+     * Priority levels
+     */
+    public static function getPriorityLevels()
+    {
+        return [
+            'low' => 'Low',
+            'normal' => 'Normal',
+            'high' => 'High',
+            'urgent' => 'Urgent'
+        ];
+    }
+
+    /**
+     * Appointment status options
+     */
+    public static function getAppointmentStatusOptions()
+    {
+        return [
+            'scheduled' => 'Scheduled',
+            'confirmed' => 'Confirmed',
+            'in_progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'no_show' => 'No Show',
+            'rescheduled' => 'Rescheduled'
+        ];
+    }
+
+    /**
+     * Check for appointment conflicts
+     */
+    public function hasConflicts()
+    {
+        if (!$this->appointment_date || !$this->doctor_id) {
+            return false;
+        }
+
+        $conflicts = self::where('doctor_id', $this->doctor_id)
+            ->where('id', '!=', $this->id)
+            ->where('main_status', '!=', 'Cancelled')
+            ->where(function($query) {
+                $query->whereBetween('appointment_date', [$this->appointment_date, $this->appointment_end_date])
+                    ->orWhereBetween('appointment_end_date', [$this->appointment_date, $this->appointment_end_date])
+                    ->orWhere(function($q) {
+                        $q->where('appointment_date', '<=', $this->appointment_date)
+                          ->where('appointment_end_date', '>=', $this->appointment_end_date);
+                    });
+            })
+            ->exists();
+
+        return $conflicts;
+    }
+
+    /**
+     * Check room availability
+     */
+    public function isRoomAvailable()
+    {
+        if (!$this->appointment_date || !$this->room_id) {
+            return true;
+        }
+
+        $conflicts = self::where('room_id', $this->room_id)
+            ->where('id', '!=', $this->id)
+            ->where('main_status', '!=', 'Cancelled')
+            ->where(function($query) {
+                $query->whereBetween('appointment_date', [$this->appointment_date, $this->appointment_end_date])
+                    ->orWhereBetween('appointment_end_date', [$this->appointment_date, $this->appointment_end_date]);
+            })
+            ->exists();
+
+        return !$conflicts;
+    }
+
+    /**
+     * Generate recurring appointments
+     */
+    public function generateRecurringAppointments()
+    {
+        if (!$this->is_recurring || !$this->recurrence_type || !$this->recurrence_end_date) {
+            return [];
+        }
+
+        $appointments = [];
+        $currentDate = Carbon::parse($this->appointment_date);
+        $endDate = Carbon::parse($this->recurrence_end_date);
+        $interval = $this->recurrence_interval ?: 1;
+
+        while ($currentDate->lte($endDate)) {
+            // Move to next occurrence based on recurrence type
+            switch ($this->recurrence_type) {
+                case 'daily':
+                    $currentDate->addDays($interval);
+                    break;
+                case 'weekly':
+                    $currentDate->addWeeks($interval);
+                    break;
+                case 'monthly':
+                    $currentDate->addMonths($interval);
+                    break;
+                case 'yearly':
+                    $currentDate->addYears($interval);
+                    break;
+            }
+
+            if ($currentDate->lte($endDate)) {
+                $duration = $this->duration_minutes ?: 30;
+                $endTime = $currentDate->copy()->addMinutes($duration);
+
+                $appointments[] = [
+                    'enterprise_id' => $this->enterprise_id,
+                    'consultation_number' => self::generate_consultation_number(),
+                    'patient_id' => $this->patient_id,
+                    'doctor_id' => $this->doctor_id,
+                    'department_id' => $this->department_id,
+                    'appointment_date' => $currentDate->toDateTimeString(),
+                    'appointment_end_date' => $endTime->toDateTimeString(),
+                    'duration_minutes' => $duration,
+                    'appointment_type' => $this->appointment_type,
+                    'priority' => $this->priority,
+                    'reason_for_consultation' => $this->reason_for_consultation,
+                    'room_id' => $this->room_id,
+                    'is_recurring' => false,
+                    'parent_consultation_id' => $this->id,
+                    'main_status' => 'Scheduled',
+                    'request_status' => 'Pending',
+                    'created_by' => $this->created_by,
+                ];
+            }
+        }
+
+        return $appointments;
+    }
+
+    /**
+     * Calculate appointment end date based on duration
+     */
+    public function calculateEndDate()
+    {
+        if ($this->appointment_date && $this->duration_minutes) {
+            $this->appointment_end_date = Carbon::parse($this->appointment_date)
+                ->addMinutes($this->duration_minutes)
+                ->toDateTimeString();
+        }
+    }
+
+    /**
+     * Check if appointment needs reminder
+     */
+    public function needsReminder()
+    {
+        if (!$this->appointment_date || $this->reminder_sent_at) {
+            return false;
+        }
+
+        $appointmentTime = Carbon::parse($this->appointment_date);
+        $reminderTime = $appointmentTime->copy()->subHours(24); // 24 hours before
+
+        return now()->gte($reminderTime) && now()->lt($appointmentTime);
+    }
+
+    /**
+     * Mark reminder as sent
+     */
+    public function markReminderSent($type = 'both')
+    {
+        $updates = ['reminder_sent_at' => now()];
+        
+        if ($type === 'sms' || $type === 'both') {
+            $updates['sms_reminder_sent'] = true;
+        }
+        
+        if ($type === 'email' || $type === 'both') {
+            $updates['email_reminder_sent'] = true;
+        }
+
+        $this->update($updates);
+    }
+
+    /**
+     * Enhanced scope for scheduled appointments
+     */
+    public function scopeScheduled($query)
+    {
+        return $query->where('main_status', 'Scheduled')
+                    ->orWhere('main_status', 'Confirmed');
+    }
+
+    /**
+     * Scope for appointments on a specific date
+     */
+    public function scopeOnDate($query, $date)
+    {
+        return $query->whereDate('appointment_date', $date);
+    }
+
+    /**
+     * Scope for appointments for a specific doctor
+     */
+    public function scopeForDoctor($query, $doctorId)
+    {
+        return $query->where('doctor_id', $doctorId);
+    }
+
+    /**
+     * Scope for appointments in a date range
+     */
+    public function scopeBetweenDates($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('appointment_date', [$startDate, $endDate]);
+    }
+
+    /**
+     * Enhanced relationships for appointment functionality
+     */
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(Room::class);
+    }
+
+    public function confirmedBy()
+    {
+        return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function parentConsultation()
+    {
+        return $this->belongsTo(Consultation::class, 'parent_consultation_id');
+    }
+
+    public function recurringConsultations()
+    {
+        return $this->hasMany(Consultation::class, 'parent_consultation_id');
+    }
+
+    /**
+     * Get available time slots for a doctor on a specific date
+     */
+    public static function getAvailableTimeSlots($doctorId, $date, $duration = 30)
+    {
+        // Get doctor's schedule
+        $schedule = DoctorSchedule::where('doctor_id', $doctorId)
+            ->where('day_of_week', strtolower(Carbon::parse($date)->format('l')))
+            ->where('is_active', true)
+            ->first();
+
+        if (!$schedule) {
+            return [];
+        }
+
+        // Get existing appointments for the date
+        $existingAppointments = self::forDoctor($doctorId)
+            ->onDate($date)
+            ->where('main_status', '!=', 'Cancelled')
+            ->get(['appointment_date', 'appointment_end_date']);
+
+        // Generate time slots
+        $slots = [];
+        $current = Carbon::parse($date . ' ' . $schedule->start_time);
+        $end = Carbon::parse($date . ' ' . $schedule->end_time);
+
+        while ($current->addMinutes($duration)->lte($end)) {
+            $slotStart = $current->copy()->subMinutes($duration);
+            $slotEnd = $current->copy();
+
+            // Check if slot conflicts with existing appointments
+            $hasConflict = $existingAppointments->contains(function ($appointment) use ($slotStart, $slotEnd) {
+                $appointmentStart = Carbon::parse($appointment->appointment_date);
+                $appointmentEnd = Carbon::parse($appointment->appointment_end_date);
+
+                return $slotStart->lt($appointmentEnd) && $slotEnd->gt($appointmentStart);
+            });
+
+            if (!$hasConflict) {
+                $slots[] = [
+                    'start_time' => $slotStart->format('H:i'),
+                    'end_time' => $slotEnd->format('H:i'),
+                    'start_datetime' => $slotStart->toDateTimeString(),
+                    'end_datetime' => $slotEnd->toDateTimeString(),
+                ];
+            }
+        }
+
+        return $slots;
+    }
+
+    public function getDosesSchedule()
     {
         $doses = DoseItemRecord::where([
             'consultation_id' => $this->id,

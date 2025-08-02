@@ -214,13 +214,13 @@ class ProgressMonitoringController extends AdminController
                 $u = Admin::user();
                 //hidden receptionist_id
                 $form->hidden('receptionist_id', __('Receptionist id'))->default($u->id);
-                $form->hasMany('medical_services', __('Press the "New" button to add a Medical Services'), function (Form\NestedForm $form) {
+                $form->hasMany('medicalServices', __('Press the "New" button to add a Medical Services'), function (Form\NestedForm $form) {
                     $form->select('type', __('Select Service'))
                         ->options(Service::all()->pluck('name', 'name')->toArray())
                         ->rules('required');
                     // assigned_to_id assign to specialist or doctor
                     $form->select('assigned_to_id', __('Assigned To'))
-                        ->options(User::get_doctors())
+                        ->options(User::getDoctors())
                         ->rules('required');
                     //status hide as hidden
                     $form->hidden('status', __('Status'))->default('Pending');

@@ -270,7 +270,7 @@ class ConsultationPaymentController extends AdminController
         $form->display('total_due', 'Total Due Amount (UGX)')->readonly();
         $form->divider('Payment Records');
 
-        $form->hasMany('payment_records', 'Click on (New) to add Payment Record', function (Form\NestedForm $form) {
+        $form->hasMany('paymentRecords', 'Click on (New) to add Payment Record', function (Form\NestedForm $form) {
             $form->currency('amount_paid', 'Amount Paid (UGX)')->symbol('UGX');
             $form->datetime('payment_date', 'Payment Date')->default(date('Y-m-d H:i:s'));
             $form->text('payment_method', 'Payment Method');

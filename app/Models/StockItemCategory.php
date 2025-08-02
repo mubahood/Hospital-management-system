@@ -2,19 +2,39 @@
 
 namespace App\Models;
 
+use App\Traits\StandardBootTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class StockItemCategory extends Model
 {
-    use HasFactory;
-    //boot disable deleting
-    public static function boot()
+    use HasFactory, StandardBootTrait;
+    
+    protected $fillable = [
+        'enterprise_id',
+        'name',
+        'description',
+        'measuring_unit',
+        'current_stock_quantity',
+        'current_stock_value',
+        'recent_stock_value',
+        'original_stock_value'
+    ];
+    
+    protected static function boot(): void
     {
         parent::boot();
-        static::deleting(function ($model) {
-            throw new \Exception('This model cannot be deleted.');
-        });
+        
+        // Call standardized boot methods
+        static::bootStandardBootTrait();
+    }
+
+    /**
+     * Handle pre-deletion logic - called by StandardBootTrait
+     */
+    protected static function onDeleting($model): void
+    {
+        throw new \Exception('This model cannot be deleted.');
     }
 
     //get dopdown options for select

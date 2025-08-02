@@ -2,23 +2,43 @@
 
 namespace App\Models;
 
+use App\Traits\StandardBootTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
-    use HasFactory;
-    //boot on deleting throw exception
-    protected static function boot()
+    use HasFactory, StandardBootTrait;
+    
+    protected $fillable = [
+        'name',
+        'description',
+        'price',
+        'category',
+        'status',
+        'duration',
+        'department_id',
+        'enterprise_id'
+    ];
+    
+    protected static function boot(): void
     {
         parent::boot();
-        static::deleting(function ($model) {
-            throw new \Exception('This model cannot be deleted.');
-        });
+        
+        // Call standardized boot methods
+        static::bootStandardBootTrait();
+    }
+
+    /**
+     * Handle pre-deletion logic - called by StandardBootTrait
+     */
+    protected static function onDeleting($model): void
+    {
+        throw new \Exception('This model cannot be deleted.');
     }
 
     //array of id and name_text 
-    public static function get_list()
+    public static function getList()
     {
         $services = Service::all();
         $list = [];

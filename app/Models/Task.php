@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
 use Encore\Admin\Auth\Database\Administrator;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,10 +11,11 @@ use Illuminate\Support\Facades\Auth;
 
 class Task extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait;
 
     //fillables
     protected $fillable = [
+        'enterprise_id',
         'company_id',
         'project_id',
         'project_section_id',

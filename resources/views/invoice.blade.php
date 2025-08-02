@@ -199,7 +199,7 @@ $logo = public_path('storage/' . $company->logo);
         </thead>
         <tbody>
             <?php $sn = 1; ?>
-            @foreach ($item->medical_services as $service)
+            @foreach (($item->medicalServices ?? []) as $service)
                 <tr>
                     <td class="pt-1 pl-2">{{ $sn++ }}</td>
                     <td class="pt-1 pl-1">{{ $service->type }}</td>
@@ -207,7 +207,7 @@ $logo = public_path('storage/' . $company->logo);
                     <td class="pt-1 pl-1 text-right pr-2">UGX {{ number_format($service->total_price, 2) }}</td>
                 </tr>
             @endforeach
-            @foreach ($item->billing_items as $_item)
+            @foreach (($item->billingItems ?? []) as $_item)
                 @php
                     if ($_item->type == 'Discount') {
                         continue;
@@ -226,7 +226,7 @@ $logo = public_path('storage/' . $company->logo);
                     pl-1 text-uppercase"><b>Subtotal</b></td>
                 <td class="pt-1 pl-1 text-right pr-2"><b>UGX {{ number_format($item->subtotal, 2) }}</b></td>
             </tr>
-            @foreach ($item->billing_items as $_item)
+            @foreach (($item->billingItems ?? []) as $_item)
                 @php
                     if ($_item->type != 'Discount') {
                         continue;

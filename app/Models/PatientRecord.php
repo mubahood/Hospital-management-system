@@ -2,16 +2,29 @@
 
 namespace App\Models;
 
+use App\Traits\EnterpriseScopeTrait;
+use App\Traits\StandardBootTrait;
 use Encore\Admin\Auth\Database\Administrator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PatientRecord extends Model
 {
-    use HasFactory;
+    use HasFactory, EnterpriseScopeTrait, StandardBootTrait;
+
+    protected $fillable = [
+        'enterprise_id',
+        'patient_id',
+        'administrator_id',
+        'record_date',
+        'symptoms',
+        'diagnosis',
+        'treatment',
+        'notes'
+    ];
 
     //for patient
-    public function patient_user()
+    public function patientUser()
     {
         return $this->belongsTo(Patient::class, 'patient_id');
     }

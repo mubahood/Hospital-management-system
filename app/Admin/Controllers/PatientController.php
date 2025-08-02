@@ -5,6 +5,9 @@ namespace App\Admin\Controllers;
 use App\Models\AdminRole;
 use App\Models\Company;
 use App\Models\User;
+use App\Models\Enterprise;
+use App\Traits\EnterpriseScopeTrait;
+use Illuminate\Database\Eloquent\Builder;
 use Encore\Admin\Auth\Database\Administrator;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Facades\Admin;
@@ -31,48 +34,110 @@ class PatientController extends AdminController
      */
     protected function grid()
     {
+        $u = Admin::user();
+        $ent = Enterprise::find($u->enterprise_id);
+        if ($ent == null) {
+            admin_error('No enterprise found. Please contact your system administrator.');
+            return redirect(admin_url('/'));
+        }
+
         $grid = new Grid(new User());
         $grid->actions(function ($actions) {
             $actions->disableDelete();
         });
-        $conds = [];
-        $u = Admin::user();
-        if ($u != null && $u->company_id != 1) {
-            $conds['company_id'] = $u->company_id;
-        }
+        
+        // Enterprise filtering - Users will be automatically filtered by EnterpriseScopeTrait
         $grid->model()
-            ->orderBy('id', 'Desc')
-            ->where($conds);
+            ->where('user_type', 'patient')
+            ->orderBy('id', 'Desc');
+            
         $grid->actions(function ($actions) {
             //$actions->disableView();
         });
 
+        // Enhanced filters leveraging our model scopes
         $grid->filter(function ($filter) {
-            $roleModel = config('admin.database.roles_model');
-            $filter->equal('main_role_id', 'Filter by role')
-                ->select($roleModel::where('slug', '!=', 'super-admin')
-                    ->where('slug', '!=', 'student')
-                    ->get()
-                    ->pluck('name', 'id'));
+            $filter->like('name', 'Name');
+            $filter->like('phone_number_1', 'Phone Number');
+            $filter->like('email', 'Email');
+            $filter->equal('sex', 'Gender')->select(['Male' => 'Male', 'Female' => 'Female']);
+            $filter->between('date_of_birth', 'Date of Birth')->date();
+            $filter->equal('belongs_to_company', 'Company Member')->select(['Yes' => 'Yes', 'No' => 'No']);
+            $filter->equal('is_dependent', 'Is Dependent')->select(['Yes' => 'Yes', 'No' => 'No']);
+            $filter->equal('card_status', 'Card Status')->select([
+                'Pending' => 'Pending', 
+                'Active' => 'Active', 
+                'Deactive' => 'Deactive'
+            ]);
+            $filter->select('company_id', 'Company')->options(Company::pluck('name', 'id'));
+            $filter->between('created_at', 'Registration Date')->datetime();
         });
 
-
-        $grid->quickSearch('name')->placeholder('Search by name');
+        $grid->quickSearch('name', 'phone_number_1', 'email')->placeholder('Search by name, phone, or email');
         $grid->disableBatchActions();
-        $grid->column('id', __('Id'))->sortable();
-
+        
+        // Enhanced grid columns with accessor methods from User model
+        $grid->column('id', __('ID'))->sortable();
         $grid->column('avatar', __('Photo'))
             ->lightbox(['width' => 50, 'height' => 50]);
-
-        $grid->column('name', __('Name'))->sortable();
-        $grid->column('roles', 'Roles')->pluck('name')->label()->hide();
-        $grid->column('phone_number_1', __('Phone number'))->sortable();
-        $grid->column('phone_number_2', __('Phone number 2'))->hide();
+        $grid->column('patient_number', __('Patient ID'))->sortable();
+        $grid->column('full_name', __('Full Name'))->sortable();
+        $grid->column('age', __('Age'))->sortable();
+        $grid->column('sex', __('Gender'))->sortable()
+            ->label(['Male' => 'primary', 'Female' => 'success']);
+        $grid->column('formatted_phone', __('Phone'))->sortable();
         $grid->column('email', __('Email'));
-        $grid->column('date_of_birth', __('D.O.B'))->sortable();
-        $grid->column('nationality', __('Nationality'))->sortable()->hide();
-        $grid->column('sex', __('Gender'))->sortable();
-
+        $grid->column('formatted_date_of_birth', __('D.O.B'))->sortable();
+        
+        // Company information
+        $grid->column('company_id', 'Company')
+            ->display(function ($company_id) {
+                if (!$company_id) {
+                    return '<span class="label label-default">N/A</span>';
+                }
+                $company = Company::withoutGlobalScope('enterprise')->find($company_id);
+                if ($company == null) {
+                    return '<span class="label label-warning">Invalid</span>';
+                }
+                return '<span class="label label-info">' . $company->name . '</span>';
+            })->sortable();
+            
+        $grid->column('belongs_to_company', 'Company Member')
+            ->using(['Yes' => 'Yes', 'No' => 'No'], 'No')
+            ->label(['Yes' => 'success', 'No' => 'default'])->sortable();
+            
+        // Card information
+        $grid->column('is_dependent', 'Dependent')
+            ->using(['Yes' => 'Yes', 'No' => 'No'], 'No')
+            ->label(['Yes' => 'warning', 'No' => 'success'])->sortable();
+            
+        $grid->column('card_status', 'Card Status')
+            ->label([
+                'Pending' => 'warning',
+                'Active' => 'success',
+                'Deactive' => 'danger',
+            ])->sortable();
+            
+        // Emergency contact
+        $grid->column('emergency_person_name', 'Emergency Contact');
+        $grid->column('emergency_person_phone', 'Emergency Phone')->hide();
+        
+        // Medical information (hide by default, show on demand)
+        $grid->column('insurance_policy_number', 'Insurance')->hide();
+        $grid->column('medical_history', 'Medical History')->hide();
+        $grid->column('allergies', 'Allergies')->hide();
+        $grid->column('current_medications', 'Current Medications')->hide();
+        
+        // Statistics column
+        $grid->column('stats', 'Statistics')
+            ->display(function () {
+                $consultationCount = $this->consultations()->count();
+                $totalCost = $this->getTotalMedicalCosts();
+                return "Consultations: {$consultationCount}<br>Total Cost: UGX " . number_format($totalCost);
+            })->hide();
+            
+        // Additional hidden columns for detailed view
+        $grid->column('nationality', __('Nationality'))->hide();
         $grid->column('home_address', __('Home address'))->hide();
         $grid->column('current_address', __('Current address'))->hide();
         $grid->column('religion', __('Religion'))->hide();
@@ -83,58 +148,33 @@ class PatientController extends AdminController
         $grid->column('mother_name')->hide();
         $grid->column('mother_phone')->hide();
         $grid->column('languages')->hide();
-        $grid->column('emergency_person_name', 'Next of Kin');
-        $grid->column('company_id', 'Company')
-            ->display(function () {
-                if ($this->company == null) {
-                    return 'N/A';
-                }
-                return $this->company->name;
-            })->sortable();
-        $grid->column('emergency_person_phone')->hide();
         $grid->column('national_id_number', 'N.I.N')->hide();
         $grid->column('passport_number')->hide();
         $grid->column('tin', 'TIN')->hide();
-        $grid->column('nssf_number')->hide();
-        $grid->column('bank_name')->hide();
-        $grid->column('bank_account_number')->hide();
-        $grid->column('primary_school_name')->hide();
-        $grid->column('primary_school_year_graduated')->hide();
-        $grid->column('seconday_school_name')->hide();
-        $grid->column('seconday_school_year_graduated')->hide();
-        $grid->column('high_school_name')->hide();
-        $grid->column('high_school_year_graduated')->hide();
-        $grid->column('degree_university_name')->hide();
-        $grid->column('degree_university_year_graduated')->hide();
-        $grid->column('masters_university_name')->hide();
-        $grid->column('masters_university_year_graduated')->hide();
-        $grid->column('phd_university_name')->hide();
-        $grid->column('belongs_to_company', 'Belongs to Company')
-            ->using(
-                [
-                    'Yes' => 'Yes',
-                    'No' => 'No',
-                ],
-                'No'
-            )
-            ->label([
-                'Yes' => 'success',
-                'No' => 'danger',
-            ])->sortable();
+        $grid->column('time_ago', 'Registered')->sortable();
 
-
-        $grid->column('week', 'Report')
+        // Action buttons
+        $grid->column('actions', 'Actions')
             ->display(function ($x) {
-                $url = url("/departmental-workplan?id={$this->id}");
-                $link = '<a target="_blank" class="btn btn-primary btn-sm" href="' . $url . '">PRINT REPORT</a>';
-                return $link;
-            })->hide();
+                $patientId = $this->getKey();
+                $consultationUrl = admin_url("/consultations?patient_id={$patientId}");
+                $reportUrl = url("/departmental-workplan?id={$patientId}");
+                $resetUrl = url("/reset-mail?id={$patientId}");
+                
+                $actions = '';
+                $actions .= '<a target="_blank" class="btn btn-sm btn-primary" href="' . $consultationUrl . '" title="View Consultations">
+                    <i class="fa fa-stethoscope"></i>
+                </a> ';
+                $actions .= '<a target="_blank" class="btn btn-sm btn-info" href="' . $reportUrl . '" title="Print Report">
+                    <i class="fa fa-print"></i>
+                </a> ';
+                $actions .= '<a target="_blank" class="btn btn-sm btn-warning" href="' . $resetUrl . '" title="Reset Password">
+                    <i class="fa fa-key"></i>
+                </a>';
+                
+                return $actions;
+            });
 
-        $grid->column('password', __('Reset Password'))->display(function ($x) {
-            $url = url("/reset-mail?id={$this->id}");
-            $link = '<a target="_blank" class="btn btn-primary btn-sm" href="' . $url . '">RESET PASSWORD</a>';
-            return $link;
-        })->hide();
         return $grid;
     }
 
@@ -163,125 +203,209 @@ class PatientController extends AdminController
     protected function form()
     {
         $u = Admin::user();
+        $ent = Enterprise::find($u->enterprise_id);
+        if ($ent == null) {
+            admin_error('No enterprise found. Please contact your system administrator.');
+            return redirect(admin_url('/'));
+        }
 
         $form = new Form(new User());
+        
+        // Hidden enterprise_id field
+        $form->hidden('enterprise_id')->rules('required')->default($u->enterprise_id)
+            ->value($u->enterprise_id);
+        
         //hide user_type
-        $form->hidden('user_type')->default('Patient');
+        $form->hidden('user_type')->default('patient');
 
+        $form->divider('BASIC INFORMATION');
 
-        $form->divider('BIO DATA');
-
-        $u = Admin::user();
-        $form->text('first_name')->rules('required');
-        $form->text('last_name')->rules('required');
-        $form->date('date_of_birth');
-        $form->text('place_of_birth');
+        $form->text('first_name', 'First Name')->rules('required');
+        $form->text('last_name', 'Last Name')->rules('required');
+        $form->text('middle_name', 'Middle Name');
+        $form->date('date_of_birth', 'Date of Birth')->rules('required');
+        $form->text('place_of_birth', 'Place of Birth');
         $form->radioCard('sex', 'Gender')->options(['Male' => 'Male', 'Female' => 'Female'])->rules('required');
-        $form->text('phone_number_1', 'Mobile phone number')->rules('required');
-        $form->text('phone_number_2', 'Home phone number');
-        $form->text('current_address', 'Address')->rules('required');
+        $form->text('nationality', 'Nationality')->default('Ugandan');
+        $form->text('national_id_number', 'National ID Number');
+        $form->text('passport_number', 'Passport Number');
 
+        $form->divider('CONTACT INFORMATION');
 
+        $form->text('phone_number_1', 'Primary Phone Number')->rules('required');
+        $form->text('phone_number_2', 'Secondary Phone Number');
+        $form->email('email', 'Email Address')->rules('email');
+        $form->textarea('current_address', 'Current Address')->rules('required');
+        $form->textarea('home_address', 'Home/Permanent Address');
 
-        $form->divider('PERSONAL INFORMATION');
+        $form->divider('MEDICAL INFORMATION');
 
-        $form->radioCard('has_personal_info', 'Add personal information?')
-            ->options([
-                'Yes' => 'Yes',
-                'No' => 'No',
-            ])->when('Yes', function ($form) {
-                $form->text('religion');
-                $form->text('nationality');
-                $form->text('home_address');
+        $form->textarea('medical_history', 'Medical History')
+            ->help('Previous medical conditions, surgeries, hospitalizations');
+        $form->textarea('allergies', 'Allergies')
+            ->help('Known allergies to medications, foods, or substances');
+        $form->textarea('current_medications', 'Current Medications')
+            ->help('List all current medications and dosages');
+        $form->textarea('family_medical_history', 'Family Medical History')
+            ->help('Relevant family medical conditions');
+        $form->select('blood_type', 'Blood Type')->options([
+            'A+' => 'A+', 'A-' => 'A-',
+            'B+' => 'B+', 'B-' => 'B-',
+            'AB+' => 'AB+', 'AB-' => 'AB-',
+            'O+' => 'O+', 'O-' => 'O-',
+        ]);
+        $form->text('weight', 'Weight (kg)')->help('Current weight in kilograms');
+        $form->text('height', 'Height (cm)')->help('Height in centimeters');
+        
+        $form->divider('EMERGENCY CONTACT');
 
-                $form->text('spouse_name', "Spouse's name");
-                $form->text('spouse_phone', "Spouse's phone number");
-                $form->text('father_name', "Father's name");
-                $form->text('father_phone', "Father's phone number");
-                $form->text('mother_name', "Mother's name");
-                $form->text('mother_phone', "Mother's phone number");
+        $form->text('emergency_person_name', 'Emergency Contact Name')->rules('required');
+        $form->text('emergency_person_phone', 'Emergency Contact Phone')->rules('required');
+        $form->text('emergency_person_relationship', 'Relationship to Patient')
+            ->help('e.g., Spouse, Parent, Sibling, Friend');
+        $form->textarea('emergency_person_address', 'Emergency Contact Address');
 
-                $form->text('languages', "Languages/Dilect");
-                $form->text('emergency_person_name', "Emergency person to contact name");
-                $form->text('emergency_person_phone', "Emergency person to contact phone number");
+        $form->divider('INSURANCE INFORMATION');
+
+        $form->radioCard('has_insurance', 'Has Medical Insurance?')
+            ->options(['Yes' => 'Yes', 'No' => 'No'])
+            ->when('Yes', function ($form) {
+                $form->text('insurance_company', 'Insurance Company');
+                $form->text('insurance_policy_number', 'Policy Number');
+                $form->date('insurance_expiry_date', 'Policy Expiry Date');
+                $form->text('insurance_coverage_details', 'Coverage Details');
             });
 
-        $form->divider('COMPANY SETTINGS');
+        $form->divider('FAMILY INFORMATION');
+
+        $form->radioCard('has_family_info', 'Add family information?')
+            ->options(['Yes' => 'Yes', 'No' => 'No'])
+            ->when('Yes', function ($form) {
+                $form->text('religion', 'Religion');
+                $form->text('spouse_name', "Spouse's Name");
+                $form->text('spouse_phone', "Spouse's Phone Number");
+                $form->text('father_name', "Father's Name");
+                $form->text('father_phone', "Father's Phone Number");
+                $form->text('mother_name', "Mother's Name");
+                $form->text('mother_phone', "Mother's Phone Number");
+                $form->text('languages', 'Languages Spoken');
+            });
+
+        $form->divider('EMPLOYMENT & COMPANY');
+        
         $form->radioCard('belongs_to_company', 'Does this patient belong to a company?')
             ->options(['Yes' => 'Yes', 'No' => 'No'])
             ->when('Yes', function ($form) {
                 $form->select('company_id', 'Company')->options(Company::pluck('name', 'id'))->rules('required');
-                $form->radioCard('belongs_to_company_status', 'Company Status')->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Deactive']);
+                $form->text('employee_id', 'Employee ID');
+                $form->text('job_title', 'Job Title');
+                $form->text('department', 'Department');
+                $form->radioCard('belongs_to_company_status', 'Employment Status')
+                    ->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Inactive']);
             })->rules('required');
+
+        $form->divider('FINANCIAL INFORMATION');
+
+        $form->radioCard('add_financial_info', 'Add financial information?')
+            ->options(['Yes' => 'Yes', 'No' => 'No'])
+            ->when('Yes', function ($form) {
+                $form->text('tin', 'TIN Number');
+                $form->text('nssf_number', 'NSSF Number');
+                $form->text('bank_name', 'Bank Name');
+                $form->text('bank_account_number', 'Bank Account Number');
+                $form->text('next_of_kin', 'Next of Kin');
+                $form->text('next_of_kin_phone', 'Next of Kin Phone');
+            });
+
         $form->divider('CARD SETTINGS');
 
         $form->radioCard('is_dependent', 'Is this patient a dependent?')->options(['Yes' => 'Yes', 'No' => 'No'])
             ->when('Yes', function ($form) {
-                /* dependent_id */
-                $form->select('dependent_id', 'Dependent')->options(User::where([
-                    'user_type' => 'Patient',
+                $form->select('dependent_id', 'Primary Cardholder')->options(User::where([
+                    'user_type' => 'patient',
                     'is_dependent' => 'No',
                 ])->pluck('name', 'id'))->rules('required');
-
-                /* dependent_status */
-                $form->radioCard('dependent_status', 'Dependent status')->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Deactive']);
+                $form->radioCard('dependent_status', 'Dependent Status')
+                    ->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Inactive']);
             })
             ->when('No', function ($form) {
-                /* card_number */
-                $form->text('card_number', 'Card number');
-                /* card_accepts_credit */
-                $form->radioCard('card_accepts_credit', 'Card accepts credit')->options(['Yes' => 'Yes', 'No' => 'No'])
+                $form->text('card_number', 'Card Number');
+                $form->radioCard('card_accepts_credit', 'Card Accepts Credit')
+                    ->options(['Yes' => 'Yes', 'No' => 'No'])
                     ->when('Yes', function ($form) {
-                        $form->decimal('card_max_credit', 'Card credit limit')->rules('required');
+                        $form->decimal('card_max_credit', 'Card Credit Limit')->rules('required');
                     });
-                /* card_max_credit */
-                /* card_expiry */
-                $form->date('card_expiry', 'Card expiry')->rules('required');
-                $form->radioCard('card_status', 'Card status')->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Deactive']);
+                $form->date('card_expiry', 'Card Expiry Date')->rules('required');
+                $form->radioCard('card_status', 'Card Status')
+                    ->options(['Pending' => 'Pending', 'Active' => 'Active', 'Deactive' => 'Inactive']);
             })
             ->rules('required');
 
+        $form->divider('EDUCATION (Optional)');
 
-
-        $permissionModel = config('admin.database.permissions_model');
+        $form->radioCard('add_education_info', 'Add education information?')
+            ->options(['Yes' => 'Yes', 'No' => 'No'])
+            ->when('Yes', function ($form) {
+                $form->text('primary_school_name', 'Primary School');
+                $form->text('primary_school_year_graduated', 'Primary Graduation Year');
+                $form->text('seconday_school_name', 'Secondary School');
+                $form->text('seconday_school_year_graduated', 'Secondary Graduation Year');
+                $form->text('high_school_name', 'High School');
+                $form->text('high_school_year_graduated', 'High School Graduation Year');
+                $form->text('degree_university_name', 'University (Degree)');
+                $form->text('degree_university_year_graduated', 'Degree Graduation Year');
+                $form->text('masters_university_name', 'University (Masters)');
+                $form->text('masters_university_year_graduated', 'Masters Graduation Year');
+                $form->text('phd_university_name', 'University (PhD)');
+                $form->text('phd_university_year_graduated', 'PhD Graduation Year');
+            });
 
         $form->divider('SYSTEM ACCOUNT');
-        $form->image('avatar', 'Photo');
-
-        $form->text('email', 'Email address')
-            ->creationRules(["unique:admin_users"])
-            ->rules();
-
+        
+        $form->image('avatar', 'Profile Photo');
 
         if ($form->isCreating()) {
-            $form->password('password', 'Password')->rules('required|confirmed');
-            $form->password('password_confirmation', 'Password Confirmation')->rules('required')
+            $form->password('password', 'Password')->rules('required|confirmed|min:6');
+            $form->password('password_confirmation', 'Confirm Password')->rules('required')
                 ->default(function ($form) {
                     return $form->model()->password;
                 });
         } else {
-
             $form->radio('change_password', 'Change Password')
                 ->options([
                     'Change Password' => 'Change Password',
-                    'Dont Change Password' => 'Dont Change Password'
+                    'Dont Change Password' => 'Don\'t Change Password'
                 ])->when('Change Password', function ($form) {
-                    $form->password('password', trans('admin.password'))->rules('confirmed');
-                    $form->password('password_confirmation', trans('admin.password_confirmation'))
+                    $form->password('password', 'New Password')->rules('confirmed|min:6');
+                    $form->password('password_confirmation', 'Confirm New Password')
                         ->default(function ($form) {
                             return $form->model()->password;
                         });
                 });
         }
-        $form->ignore(['password_confirmation', 'change_password']);
+
+        $form->ignore(['password_confirmation', 'change_password', 'has_personal_info', 'has_family_info', 'add_financial_info', 'add_education_info', 'has_insurance']);
+        
         $form->saving(function (Form $form) {
+            $u = Admin::user();
+            
+            // Set enterprise_id to current user's enterprise
+            if (!$form->enterprise_id) {
+                $form->enterprise_id = $u->enterprise_id ?? 1;
+            }
+            
+            // Set user_type to patient
+            $form->user_type = 'patient';
+            
+            // Auto-generate name from first_name and last_name
+            if ($form->first_name && $form->last_name) {
+                $form->name = trim($form->first_name . ' ' . ($form->middle_name ? $form->middle_name . ' ' : '') . $form->last_name);
+            }
+            
             if ($form->password && $form->model()->password != $form->password) {
                 $form->password = Hash::make($form->password);
             }
         });
-
-
-
 
         $form->disableReset();
         $form->disableViewCheck();

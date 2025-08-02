@@ -229,7 +229,7 @@ class DoseController extends AdminController
 
         $form->divider('Dose Items');
         $form->html('Press "New" to enter new dose item.');
-        $form->hasMany('dose_items', null, function (Form\NestedForm $form) {
+        $form->hasMany('doseItems', null, function (Form\NestedForm $form) {
             $form->text('medicine', 'Medicine')->required();
             $form->decimal('quantity', __('Quantity'))->required();
 

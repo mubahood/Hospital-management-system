@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\StandardBootTrait;
 use Carbon\Carbon;
 use Dflydev\DotAccessData\Util;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Image extends Model
 {
-    use HasFactory;
+    use HasFactory, StandardBootTrait;
     protected $fillable = [
         'administrator_id',
         'src',
@@ -22,34 +23,44 @@ class Image extends Model
         'product_id',
     ];
 
-    public static function boot()
+    protected static function boot(): void
     {
         parent::boot();
+        
+        // Call standardized boot methods
+        static::bootStandardBootTrait();
+    }
 
-        self::deleting(function ($m) {
+    /**
+     * Handle pre-deletion logic - called by StandardBootTrait
+     */
+    protected static function onDeleting($model): void
+    {
+        $src = Utils::docs_root() . "/storage/images/" . $model->src;
 
-            $src = Utils::docs_root() . "/storage/images/" . $m->src;
-
-            if ($m->thumbnail != null) {
-                if (strlen($m->thumbnail) > 2) {
-                    $thumb = Utils::docs_root() . "/storage/images/" . $m->thumbnail;
-                }
+        if ($model->thumbnail != null) {
+            if (strlen($model->thumbnail) > 2) {
+                $thumb = Utils::docs_root() . "/storage/images/" . $model->thumbnail;
             }
-            if (!isset($thumb)) {
-                $thumb =  Utils::docs_root() . "/storage/images/thumb_" . $m->src;
-            }
+        }
+        if (!isset($thumb)) {
+            $thumb =  Utils::docs_root() . "/storage/images/thumb_" . $model->src;
+        }
 
-            if (file_exists($src)) {
-                unlink($src);
-            }
-            if (file_exists($thumb)) {
-                unlink($thumb);
-            }
-        });
+        if (file_exists($src)) {
+            unlink($src);
+        }
+        if (file_exists($thumb)) {
+            unlink($thumb);
+        }
+    }
 
-        self::created(function ($m) {
-            $m->create_thumbail();
-        });
+    /**
+     * Handle post-creation logic - called by StandardBootTrait
+     */
+    protected static function onCreated($model): void
+    {
+        $model->create_thumbail();
     }
 
     public function getSrcAttribute($src)
