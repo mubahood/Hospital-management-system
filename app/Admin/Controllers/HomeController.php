@@ -103,6 +103,19 @@ class HomeController extends Controller
             });
         });
 
+        // Add enhanced dashboard widgets for comprehensive hospital metrics
+        $content->row(function (Row $row) {
+            $row->column(4, function (Column $column) {
+                $column->append(new \App\Admin\Widgets\PatientStatistics());
+            });
+            $row->column(4, function (Column $column) {
+                $column->append(new \App\Admin\Widgets\FinancialOverview());
+            });
+            $row->column(4, function (Column $column) {
+                $column->append(new \App\Admin\Widgets\InventoryAlerts());
+            });
+        });
+
         return $content;
     }
  

@@ -1265,4 +1265,161 @@ class Consultation extends Model
 */
         return $data;
     }
+
+    /**
+     * Additional appointment-specific helper methods
+     */
+
+    /**
+     * Check if appointment is overdue
+     */
+    public function isOverdue()
+    {
+        return $this->appointment_date < now() && 
+               in_array($this->status, ['scheduled', 'confirmed']);
+    }
+
+    /**
+     * Check if appointment is upcoming
+     */
+    public function isUpcoming()
+    {
+        return $this->appointment_date > now() && 
+               in_array($this->status, ['scheduled', 'confirmed']);
+    }
+
+    /**
+     * Check if appointment is today
+     */
+    public function isToday()
+    {
+        return $this->appointment_date && 
+               $this->appointment_date->isToday();
+    }
+
+    /**
+     * Get appointment duration in readable format
+     */
+    public function getDurationText()
+    {
+        if ($this->duration_minutes < 60) {
+            return $this->duration_minutes . ' minutes';
+        } else {
+            $hours = floor($this->duration_minutes / 60);
+            $minutes = $this->duration_minutes % 60;
+            return $hours . ' hour' . ($hours > 1 ? 's' : '') . 
+                   ($minutes > 0 ? ' ' . $minutes . ' minutes' : '');
+        }
+    }
+
+    /**
+     * Get appointment time range as formatted string
+     */
+    public function getTimeRange()
+    {
+        if (!$this->appointment_date) {
+            return null;
+        }
+        
+        $start = $this->appointment_date;
+        $end = $this->appointment_end_date ?? $start->copy()->addMinutes($this->duration_minutes);
+        
+        return $start->format('H:i') . ' - ' . $end->format('H:i');
+    }
+
+    /**
+     * Check if appointment needs confirmation
+     */
+    public function needsConfirmation()
+    {
+        return $this->confirmation_required && !$this->confirmed_at;
+    }
+
+    /**
+     * Confirm the appointment
+     */
+    public function confirmAppointment($userId = null)
+    {
+        $this->update([
+            'confirmed_at' => now(),
+            'confirmed_by' => $userId,
+            'status' => 'confirmed'
+        ]);
+    }
+
+    /**
+     * Check in the patient for the appointment
+     */
+    public function checkIn()
+    {
+        $this->update([
+            'checked_in_at' => now(),
+            'status' => 'in_progress'
+        ]);
+    }
+
+    /**
+     * Start the appointment/consultation
+     */
+    public function startAppointment()
+    {
+        $this->update([
+            'started_at' => now(),
+            'status' => 'in_progress'
+        ]);
+    }
+
+    /**
+     * Complete the appointment/consultation
+     */
+    public function completeAppointment()
+    {
+        $this->update([
+            'completed_at' => now(),
+            'status' => 'completed'
+        ]);
+    }
+
+    /**
+     * Cancel the appointment
+     */
+    public function cancelAppointment($reason = null, $userId = null)
+    {
+        $this->update([
+            'status' => 'cancelled',
+            'cancellation_reason' => $reason,
+            'cancelled_at' => now(),
+            'cancelled_by' => $userId
+        ]);
+    }
+
+    /**
+     * Reschedule the appointment
+     */
+    public function rescheduleAppointment($newDate, $newEndDate = null)
+    {
+        $this->update([
+            'appointment_date' => $newDate,
+            'appointment_end_date' => $newEndDate,
+            'status' => 'rescheduled'
+        ]);
+    }
+
+    /**
+     * Send reminder for the appointment
+     */
+    public function sendReminder($type = 'both')
+    {
+        $updates = ['reminder_sent_at' => now()];
+        
+        if (in_array($type, ['sms', 'both'])) {
+            $updates['sms_reminder_sent'] = true;
+        }
+        
+        if (in_array($type, ['email', 'both'])) {
+            $updates['email_reminder_sent'] = true;
+        }
+        
+        $this->update($updates);
+    }
 }

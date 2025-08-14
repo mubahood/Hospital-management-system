@@ -50,6 +50,7 @@ class User extends Authenticatable implements JWTSubject
         'languages',
         'emergency_person_name',
         'emergency_person_phone',
+        'emergency_contact_relationship',
         'national_id_number',
         'passport_number',
         'tin',
@@ -60,6 +61,7 @@ class User extends Authenticatable implements JWTSubject
         'title',
         'company_id',
         'user_type',
+        'patient_status',
         'avatar',
         'intro',
         'rate',
@@ -79,6 +81,9 @@ class User extends Authenticatable implements JWTSubject
         'medical_history',
         'allergies',
         'current_medications',
+        'blood_type',
+        'height',
+        'weight',
         'insurance_provider',
         'insurance_policy_number',
         'insurance_expiry_date',
@@ -87,7 +92,8 @@ class User extends Authenticatable implements JWTSubject
         'employment_status',
         'employer_name',
         'annual_income',
-        'education_level'
+        'education_level',
+        'preferred_language'
     ];
 
     /**
@@ -218,10 +224,17 @@ class User extends Authenticatable implements JWTSubject
             $q->where('first_name', 'like', "%{$search}%")
               ->orWhere('last_name', 'like', "%{$search}%")
               ->orWhere('name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%")
+              ->orWhere('username', 'like', "%{$search}%")
               ->orWhere('phone_number_1', 'like', "%{$search}%")
               ->orWhere('phone_number_2', 'like', "%{$search}%")
               ->orWhere('national_id_number', 'like', "%{$search}%");
+              
+            // Only search email if the column exists
+            try {
+                $q->orWhere('email', 'like', "%{$search}%");
+            } catch (\Exception $e) {
+                // Ignore if email column doesn't exist
+            }
         });
     }
 
@@ -232,64 +245,91 @@ class User extends Authenticatable implements JWTSubject
 
         self::creating(function ($m) {
 
-            $m->email = trim($m->email);
-            if ($m->email != null && strlen($m->email) > 3) {
-                if (!Utils::validateEmail($m->email)) {
-                    // throw new \Exception("Invalid email address");
-                } else {
-                    //check if email exists
-                    $u = User::withoutGlobalScope('enterprise')->where('email', $m->email)->first();
-                    if ($u != null) {
-                        throw new \Exception("Email already exists");
-                    }
-                    //check if username exists
-                    $u = User::withoutGlobalScope('enterprise')->where('username', $m->email)->first();
-                    if ($u != null) {
-                        throw new \Exception("Email as Username already exists");
+            // Only process email if the field exists (some tables like admin_users don't have email)
+            if (isset($m->email)) {
+                $m->email = trim($m->email);
+                if ($m->email != null && strlen($m->email) > 3) {
+                    if (!Utils::validateEmail($m->email)) {
+                        // throw new \Exception("Invalid email address");
+                    } else {
+                        //check if email exists
+                        $u = null;
+                        try {
+                            $u = User::withoutGlobalScope('enterprise')->where('email', $m->email)->first();
+                        } catch (\Exception $e) {
+                            // Email column doesn't exist, skip this check
+                        }
+                        
+                        if ($u != null) {
+                            throw new \Exception("Email already exists");
+                        }
+                        
+                        //check if username exists
+                        $u = User::withoutGlobalScope('enterprise')->where('username', $m->email)->first();
+                        if ($u != null) {
+                            throw new \Exception("Email as Username already exists");
+                        }
                     }
                 }
+                // Set username to email only if email exists
+                $m->username = $m->email;
             }
 
-            $n = $m->first_name . " " . $m->last_name;
-            if (strlen(trim($n)) > 1) {
-                $m->name = trim($n);
+            // Build name from first_name and last_name if they exist
+            if (isset($m->first_name) && isset($m->last_name)) {
+                $n = $m->first_name . " " . $m->last_name;
+                if (strlen(trim($n)) > 1) {
+                    $m->name = trim($n);
+                }
             }
-            $m->username = $m->email;
+            
             if ($m->password == null || strlen($m->password) < 2) {
                 $m->password = password_hash('4321', PASSWORD_DEFAULT);
             }
 
             $username = null;
-            $phone = trim($m->phone_number_1);
-            if (strlen($phone) > 2) {
-                $phone = Utils::prepare_phone_number($phone);
-                if (Utils::phone_number_is_valid($phone)) {
-                    $username = $phone;
-                    $m->phone_number_1 = $phone;
-                    //check if username exists
-                    $u = User::where('phone_number_1', $phone)->first();
-                    if ($u != null) {
-                        throw new \Exception("Phone number already exists");
-                    }
-                    //check if username exists
-                    $u = User::where('phone_number_2', $phone)->first();
-                    if ($u != null) {
-                        throw new \Exception("Phone number already exists as username.");
+            // Handle phone number validation if phone_number_1 exists
+            if (isset($m->phone_number_1)) {
+                $phone = trim($m->phone_number_1);
+                if (strlen($phone) > 2) {
+                    $phone = Utils::prepare_phone_number($phone);
+                    if (Utils::phone_number_is_valid($phone)) {
+                        $username = $phone;
+                        $m->phone_number_1 = $phone;
+                        //check if username exists
+                        $u = User::where('phone_number_1', $phone)->first();
+                        if ($u != null) {
+                            throw new \Exception("Phone number already exists");
+                        }
+                        //check if username exists
+                        $u = User::where('phone_number_2', $phone)->first();
+                        if ($u != null) {
+                            throw new \Exception("Phone number already exists as username.");
+                        }
                     }
                 }
             }
 
-            //check if $username is null or empty
-            if ($username == null) {
+            //check if $username is null or empty and try to use email if available
+            if ($username == null && isset($m->email)) {
                 //check if email is valid and set it as username using var_filter
                 $email = trim($m->email);
                 if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $username = $email;
                 }
             }
-            //check if $username is null or empty
+            
+            // If no username is set yet, and we have username field available, keep it
+            if ($username == null && isset($m->username) && strlen($m->username) > 1) {
+                $username = $m->username;
+            }
+            
+            // Set a default username if still null (for admin_users table)
             if ($username == null || strlen($username) < 2) {
-                throw new \Exception("Invalid username.");
+                if (!isset($m->username) || strlen($m->username) < 2) {
+                    throw new \Exception("Invalid username.");
+                }
+                $username = $m->username;
             }
 
             //check if username exists
@@ -364,55 +404,72 @@ class User extends Authenticatable implements JWTSubject
 
         self::updating(function ($m) {
 
-            $m->email = trim($m->email);
-            if ($m->email != null && strlen($m->email) > 3) {
-                if (!Utils::validateEmail($m->email)) {
-                    // throw new \Exception("Invalid email address");
-                } else {
-                    //check if email exists
-                    $u = User::where('email', $m->email)->first();
-                    if ($u != null && $u->id != $m->id) {
-                        throw new \Exception("Email already exists");
-                    }
-                    //check if username exists
-                    $u = User::where('username', $m->email)->first();
-                    if ($u != null && $u->id != $m->id) {
-                        throw new \Exception("Email as Username already exists");
+            // Only process email if the field is available in the model
+            if (isset($m->email)) {
+                $m->email = trim($m->email);
+                if ($m->email != null && strlen($m->email) > 3) {
+                    if (!Utils::validateEmail($m->email)) {
+                        // throw new \Exception("Invalid email address");
+                    } else {
+                        //check if email exists
+                        $u = null;
+                        try {
+                            $u = User::where('email', $m->email)->first();
+                        } catch (\Exception $e) {
+                            // Email column doesn't exist, skip this check
+                        }
+                        
+                        if ($u != null && $u->id != $m->id) {
+                            throw new \Exception("Email already exists");
+                        }
+                        
+                        //check if username exists
+                        $u = User::where('username', $m->email)->first();
+                        if ($u != null && $u->id != $m->id) {
+                            throw new \Exception("Email as Username already exists");
+                        }
                     }
                 }
+                $m->username = $m->email;
             }
 
-            $n = $m->first_name . " " . $m->last_name;
-            if (strlen(trim($n)) > 1) {
-                $m->name = trim($n);
+            // Build name from first_name and last_name if they exist
+            if (isset($m->first_name) && isset($m->last_name)) {
+                $n = $m->first_name . " " . $m->last_name;
+                if (strlen(trim($n)) > 1) {
+                    $m->name = trim($n);
+                }
             }
-            $m->username = $m->email;
+            
             if ($m->password == null || strlen($m->password) < 2) {
                 $m->password = password_hash('4321', PASSWORD_DEFAULT);
             }
 
             $username = null;
-            $phone = trim($m->phone_number_1);
-            if (strlen($phone) > 2) {
-                $phone = Utils::prepare_phone_number($phone);
-                if (Utils::phone_number_is_valid($phone)) {
-                    $username = $phone;
-                    $m->phone_number_1 = $phone;
-                    //check if username exists
-                    $u = User::where('phone_number_1', $phone)->first();
-                    if ($u != null && $u->id != $m->id) {
-                        throw new \Exception("Phone number already exists");
-                    }
-                    //check if username exists
-                    $u = User::where('phone_number_2', $phone)->first();
-                    if ($u != null) {
-                        throw new \Exception("Phone number already exists as username.");
+            // Handle phone number validation if phone_number_1 exists
+            if (isset($m->phone_number_1)) {
+                $phone = trim($m->phone_number_1);
+                if (strlen($phone) > 2) {
+                    $phone = Utils::prepare_phone_number($phone);
+                    if (Utils::phone_number_is_valid($phone)) {
+                        $username = $phone;
+                        $m->phone_number_1 = $phone;
+                        //check if username exists
+                        $u = User::where('phone_number_1', $phone)->first();
+                        if ($u != null && $u->id != $m->id) {
+                            throw new \Exception("Phone number already exists");
+                        }
+                        //check if username exists
+                        $u = User::where('phone_number_2', $phone)->first();
+                        if ($u != null) {
+                            throw new \Exception("Phone number already exists as username.");
+                        }
                     }
                 }
             }
 
-            //check if $username is null or empty
-            if ($username == null) {
+            //check if $username is null or empty and try to use email if available
+            if ($username == null && isset($m->email)) {
                 //check if email is valid and set it as username using var_filter
                 $email = trim($m->email);
                 if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -543,7 +600,25 @@ class User extends Authenticatable implements JWTSubject
     }
 
 
-    protected $table = "admin_users";
+    /**
+     * Get the name of the unique identifier for the user.
+     *
+     * @return string
+     */
+    public function getAuthIdentifierName()
+    {
+        return 'username';
+    }
+
+    /**
+     * Get the column name for the "username" (used for login).
+     *
+     * @return string
+     */
+    public function username()
+    {
+        return 'username';
+    }
 
     public function getJWTIdentifier()
     {
@@ -629,6 +704,78 @@ class User extends Authenticatable implements JWTSubject
     public function enterprise()
     {
         return $this->belongsTo(Enterprise::class);
+    }
+
+    /**
+     * Get upcoming appointments (consultations) for patient
+     */
+    public function upcomingAppointments()
+    {
+        return $this->consultations()
+            ->whereIn('status', ['scheduled', 'confirmed'])
+            ->where('appointment_date', '>', now())
+            ->orderBy('appointment_date');
+    }
+
+    /**
+     * Get active consultations for patient
+     */
+    public function activeConsultations()
+    {
+        return $this->consultations()->whereIn('status', ['scheduled', 'confirmed', 'in_progress']);
+    }
+
+    /**
+     * Calculate BMI if height and weight are available
+     */
+    public function calculateBMI()
+    {
+        if ($this->height && $this->weight) {
+            $heightInMeters = $this->height / 100; // Convert cm to meters
+            return round($this->weight / ($heightInMeters * $heightInMeters), 2);
+        }
+        return null;
+    }
+
+    /**
+     * Get patient's medical summary
+     */
+    public function getMedicalSummary()
+    {
+        return [
+            'allergies' => $this->allergies,
+            'current_medications' => $this->current_medications,
+            'medical_history' => $this->medical_history,
+            'blood_type' => $this->blood_type ?? null,
+            'height' => $this->height,
+            'weight' => $this->weight,
+            'bmi' => $this->calculateBMI(),
+            'insurance_provider' => $this->insurance_provider,
+            'insurance_policy_number' => $this->insurance_policy_number,
+            'insurance_expiry_date' => $this->insurance_expiry_date,
+        ];
+    }
+
+    /**
+     * Get patient's emergency contact info
+     */
+    public function getEmergencyContact()
+    {
+        return [
+            'name' => $this->emergency_person_name,
+            'phone' => $this->emergency_person_phone,
+            'relationship' => $this->emergency_contact_relationship ?? null,
+        ];
+    }
+
+    /**
+     * Check if patient has active insurance
+     */
+    public function hasActiveInsurance()
+    {
+        return $this->insurance_provider && 
+               $this->insurance_expiry_date && 
+               $this->insurance_expiry_date->isFuture();
     }
 
 

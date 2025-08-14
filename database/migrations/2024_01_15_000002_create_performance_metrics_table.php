@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Migration for performance metrics table
@@ -18,7 +19,7 @@ class CreatePerformanceMetricsTable extends Migration
     {
         Schema::create('performance_metrics', function (Blueprint $table) {
             $table->id();
-            $table->string('url', 1000)->index();
+            $table->string('url', 1000);
             $table->string('method', 10)->index();
             $table->string('route_name', 255)->nullable()->index();
             $table->unsignedBigInteger('user_id')->nullable()->index();
@@ -35,7 +36,7 @@ class CreatePerformanceMetricsTable extends Migration
             
             $table->timestamps();
             
-            // Indexes for performance analysis
+            // Indexes for performance analysis - URL not indexed due to size
             $table->index(['enterprise_id', 'created_at']);
             $table->index(['route_name', 'created_at']);
             $table->index(['duration_ms', 'created_at']);

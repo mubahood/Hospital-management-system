@@ -214,3 +214,22 @@ Route::get('/gen', function () {
     }
     die($m->do_get());
 })->name("register");
+
+// Role Management Routes
+Route::prefix('admin/role-management')->middleware('auth')->group(function () {
+    Route::get('/', [App\Http\Controllers\RoleManagementController::class, 'index'])->name('role-management.index');
+    Route::post('/assign-role', [App\Http\Controllers\RoleManagementController::class, 'assignRole'])->name('role-management.assign');
+    Route::delete('/remove-role', [App\Http\Controllers\RoleManagementController::class, 'removeRole'])->name('role-management.remove');
+    Route::get('/user-permissions/{userId}', [App\Http\Controllers\RoleManagementController::class, 'getUserPermissions'])->name('role-management.permissions');
+    Route::post('/test-access', [App\Http\Controllers\RoleManagementController::class, 'testRoleAccess'])->name('role-management.test');
+    Route::get('/documentation', [App\Http\Controllers\RoleManagementController::class, 'generateRoleDocumentation'])->name('role-management.documentation');
+});
+
+// Hospital Reports Routes
+Route::prefix('admin/reports')->middleware('auth')->group(function () {
+    Route::get('/', [App\Http\Controllers\HospitalReportsController::class, 'index'])->name('reports.dashboard');
+    Route::get('/patient-treatment', [App\Http\Controllers\HospitalReportsController::class, 'patientTreatmentHistory'])->name('reports.patient-treatment');
+    Route::get('/financial', [App\Http\Controllers\HospitalReportsController::class, 'financialReports'])->name('reports.financial');
+    Route::get('/inventory', [App\Http\Controllers\HospitalReportsController::class, 'inventoryReports'])->name('reports.inventory');
+    Route::get('/appointments', [App\Http\Controllers\HospitalReportsController::class, 'appointmentAnalytics'])->name('reports.appointments');
+});

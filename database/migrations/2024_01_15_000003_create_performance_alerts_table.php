@@ -47,8 +47,8 @@ class CreatePerformanceAlertsTable extends Migration
             
             // Foreign key constraints - commented out as users table may not exist
             // $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('acknowledged_by')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('resolved_by')->references('id')->on('users')->onDelete('set null');
+            // $table->foreign('acknowledged_by')->references('id')->on('users')->onDelete('set null');
+            // $table->foreign('resolved_by')->references('id')->on('users')->onDelete('set null');
         });
     }
 

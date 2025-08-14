@@ -13,13 +13,17 @@ return new class extends Migration
     {
         Schema::create('appointments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('enterprise_id')->constrained('companies')->onDelete('cascade');
+            $table->unsignedBigInteger('enterprise_id');
+            // $table->foreignId('enterprise_id')->constrained('enterprises')->onDelete('cascade');
             
             // Core appointment details
             $table->string('appointment_number')->unique();
-            $table->foreignId('patient_id')->constrained('admin_users')->onDelete('cascade');
-            $table->foreignId('doctor_id')->constrained('admin_users')->onDelete('cascade');
-            $table->foreignId('department_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('patient_id');
+            $table->unsignedBigInteger('doctor_id');
+            $table->unsignedBigInteger('department_id')->nullable();
+            // $table->foreignId('patient_id')->constrained('admin_users')->onDelete('cascade');
+            // $table->foreignId('doctor_id')->constrained('admin_users')->onDelete('cascade');
+            // $table->foreignId('department_id')->nullable()->constrained()->onDelete('set null');
             
             // Scheduling details
             $table->datetime('appointment_date');
@@ -46,15 +50,17 @@ return new class extends Migration
             $table->json('services_requested')->nullable();
             
             // Resource booking
-            $table->foreignId('room_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('room_id')->nullable();
             $table->json('equipment_ids')->nullable(); // Array of equipment IDs
+            // $table->foreignId('room_id')->nullable()->constrained()->onDelete('set null');
             
             // Recurring appointments
             $table->boolean('is_recurring')->default(false);
             $table->enum('recurrence_type', ['daily', 'weekly', 'monthly', 'yearly'])->nullable();
             $table->integer('recurrence_interval')->default(1);
             $table->date('recurrence_end_date')->nullable();
-            $table->foreignId('parent_appointment_id')->nullable()->constrained('appointments')->onDelete('cascade');
+            $table->unsignedBigInteger('parent_appointment_id')->nullable();
+            // $table->foreignId('parent_appointment_id')->nullable()->constrained('appointments')->onDelete('cascade');
             
             // Communication
             $table->boolean('sms_reminder_sent')->default(false);
@@ -62,19 +68,23 @@ return new class extends Migration
             $table->datetime('reminder_sent_at')->nullable();
             $table->boolean('confirmation_required')->default(true);
             $table->datetime('confirmed_at')->nullable();
-            $table->foreignId('confirmed_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->unsignedBigInteger('confirmed_by')->nullable();
+            // $table->foreignId('confirmed_by')->nullable()->constrained('users')->onDelete('set null');
             
             // Tracking
             $table->datetime('checked_in_at')->nullable();
             $table->datetime('started_at')->nullable();
             $table->datetime('completed_at')->nullable();
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
-            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by')->nullable();
+            // $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            // $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             
             // Cancellation details
             $table->text('cancellation_reason')->nullable();
             $table->datetime('cancelled_at')->nullable();
-            $table->foreignId('cancelled_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->unsignedBigInteger('cancelled_by')->nullable();
+            // $table->foreignId('cancelled_by')->nullable()->constrained('users')->onDelete('set null');
             
             $table->timestamps();
             

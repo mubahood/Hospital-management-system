@@ -59,5 +59,17 @@ Route::group([
     $router->resource('flutter-wave-logs', FlutterWaveLogController::class); 
     $router->resource('doses', DoseController::class); 
     $router->resource('dose-item-records', DoseItemRecordController::class);
+    
+    // 🚀 CRITICAL MISSING ROUTES - Added for V1 Completion
+    $router->resource('enterprises', EnterpriseController::class);
+    $router->resource('billing-items', BillingItemController::class);
+    $router->resource('users', UserController::class);
+    
+    // 🔥 NEW MENU STRUCTURE ROUTES - V1 Completion Phase 2
+    $router->resource('appointments', AppointmentController::class);
+    $router->resource('dose-items', 'DoseItemController');
+    $router->resource('financial-years', 'FinancialYearController');  
+    $router->resource('rooms', 'RoomController');
+    $router->resource('doctor-schedules', 'DoctorScheduleController');
 
 });
