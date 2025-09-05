@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminAuthController;
 use App\Http\Controllers\ApiAuthController;
 use App\Http\Controllers\ApiResurceController;
 use App\Http\Middleware\EnsureTokenIsValid;
@@ -18,7 +19,20 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Admin API Routes for React SPA
+Route::prefix('admin')->group(function () {
+    Route::post('login', [AdminAuthController::class, 'login']);
+    Route::middleware('auth:admin_api')->group(function () {
+        Route::get('me', [AdminAuthController::class, 'me']);
+        Route::post('logout', [AdminAuthController::class, 'logout']);
+        Route::post('refresh', [AdminAuthController::class, 'refresh']);
+        
+        // Events API
+        Route::apiResource('events', \App\Http\Controllers\Api\EventController::class);
+    });
+});
 
+// Mobile App API Routes (existing)
 Route::middleware([EnsureTokenIsValid::class])->group(function () {});
 Route::get('users/me', [ApiAuthController::class, 'me']);
 Route::get('users', [ApiAuthController::class, 'users']);

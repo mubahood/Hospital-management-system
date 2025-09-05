@@ -11,6 +11,22 @@ class Event extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'title',
+        'description',
+        'event_date',
+        'event_time',
+        'location',
+        'reminder_state',
+        'remind_beofre_days',
+        'event_conducted',
+        'administrator_id',
+        'company_id',
+        'users_to_notify',
+        'images',
+        'files',
+    ];
+
     public static function boot()
     {
         parent::boot();

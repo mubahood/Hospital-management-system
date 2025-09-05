@@ -214,3 +214,8 @@ Route::get('/gen', function () {
     }
     die($m->do_get());
 })->name("register");
+
+// React SPA Routes - these should be at the end to catch all /app/* routes
+Route::get('/app/{path?}', [\App\Http\Controllers\AppController::class, 'index'])
+    ->where('path', '.*')
+    ->name('app');

@@ -17,6 +17,7 @@
         "laravel/framework": "^8.65",
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
+        "livewire/livewire": "^2.12",
         "stefangabos/zebra_image": "^2.8",
         "tymon/jwt-auth": "^1.0@dev"
     },
