@@ -1,4 +1,6 @@
-<x-app-layout>
+@extends('layouts.app')
+
+@section('content')
     <div class="flex h-screen bg-gray-50 dark:bg-gray-900" x-data="{ sidebarOpen: false }">
         <!-- Sidebar -->
         <div class="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0" 
@@ -185,7 +187,7 @@
                                         Preferences
                                     </a>
                                     <div class="border-t border-gray-100 dark:border-gray-700"></div>
-                                    <form method="POST" action="{{ route('logout') }}">
+                                    <form method="POST" action="{{ route('app.logout') }}">
                                         @csrf
                                         <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                             Sign out
@@ -201,9 +203,9 @@
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
                 <div class="p-6">
-                    {{ $slot }}
+                    @yield('page-content')
                 </div>
             </main>
         </div>
     </div>
-</x-app-layout>
+@endsection

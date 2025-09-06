@@ -5,14 +5,24 @@
 
 RewriteEngine On
 
+# Set the base for relative URLs
+RewriteBase /hospital/
+
+# Handle static assets first
+RewriteCond %{REQUEST_URI} \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|pdf|zip)$ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ public/$1 [L]
+
+# Handle /app routes - redirect to Laravel routing (not physical app directory)
+RewriteRule ^app(/.*)?$ public/index.php [QSA,L]
+
+# Handle other requests to existing files/directories
 RewriteCond %{REQUEST_FILENAME} -d [OR]
 RewriteCond %{REQUEST_FILENAME} -f
-RewriteRule ^ ^$1 [N]
+RewriteRule ^ - [L]
 
-RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
-RewriteRule ^(.*)$ public/$1
-
+# Send all other requests to public/index.php
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ server.php
+RewriteRule ^(.*)$ public/index.php [QSA,L]
 </IfModule>

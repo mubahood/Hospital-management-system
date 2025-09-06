@@ -144,7 +144,7 @@
 </head>
 <body class="font-sans antialiased bg-gray-50 dark:bg-gray-900">
     <div class="min-h-screen">
-        {{ $slot }}
+        {{ $slot ?? '' }}
     </div>
     
     <!-- Livewire Scripts -->

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AppController;
 use App\Http\Controllers\MainController;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\RedirectIfAuthenticated;
@@ -19,6 +20,13 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+// Livewire Components
+use App\Http\Livewire\Auth\Login;
+use App\Http\Livewire\Dashboard;
+use App\Http\Livewire\Events\EventList;
+use App\Http\Livewire\Events\EventForm;
+use App\Http\Livewire\Events\EventShow;
 
 
 Route::get('migrate', function () {
@@ -70,10 +78,11 @@ Route::get('regenerate-invoice', function () {
 
 
 
-Route::get('app', function () {
-    //return url('taskease-v1.apk');
-    return redirect(url('taskease-v1.apk'));
-});
+// Note: The /app route is now handled by Livewire SPA routes below
+// Route::get('app', function () {
+//     return redirect('/app/login');
+// });
+
 Route::get('report', function () {
 
     $id = $_GET['id'];
@@ -213,9 +222,40 @@ Route::get('/gen', function () {
         return "Not found";
     }
     die($m->do_get());
-})->name("register");
+});
 
-// React SPA Routes - these should be at the end to catch all /app/* routes
-Route::get('/app/{path?}', [\App\Http\Controllers\AppController::class, 'index'])
-    ->where('path', '.*')
-    ->name('app');
+// === LIVEWIRE SPA ROUTES ===
+
+// Handle /app route - redirect to login if not authenticated, otherwise to dashboard
+Route::get('app', function () {
+    if (Auth::guard('admin')->check()) {
+        return redirect()->route('app.dashboard');
+    }
+    return redirect()->route('app.login');
+});
+
+// Login route - Using controller method
+Route::get('/app/login', [AppController::class, 'login'])->name('app.login');
+
+// Protected admin routes
+Route::middleware(['auth:admin'])->prefix('app')->name('app.')->group(function () {
+    // Dashboard - Using controller method
+    Route::get('/', [AppController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard', [AppController::class, 'dashboard'])->name('dashboard.alt');
+    
+    // Events Management
+    Route::prefix('events')->name('events.')->group(function () {
+        Route::get('/', EventList::class)->name('index');
+        Route::get('/create', EventForm::class)->name('create');
+        Route::get('/{eventId}/edit', EventForm::class)->name('edit');
+        Route::get('/{eventId}', EventShow::class)->name('show');
+    });
+    
+    // Logout
+    Route::post('/logout', function () {
+        Auth::guard('admin')->logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+        return redirect()->route('app.login');
+    })->name('logout');
+});

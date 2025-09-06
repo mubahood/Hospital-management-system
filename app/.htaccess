@@ -1,0 +1,7 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect all requests in /app/* back to the Laravel router
+    # This ensures /hospital/app/* routes are handled by Laravel instead of serving directory contents
+    RewriteRule ^(.*)$ ../public/index.php [QSA,L]
+</IfModule>
