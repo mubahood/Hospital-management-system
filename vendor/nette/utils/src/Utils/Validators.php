@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Nette\Utils;
 
 use Nette;
+use function array_key_exists, class_exists, explode, gettype, interface_exists, is_callable, is_float, is_int, is_iterable, is_numeric, is_object, is_string, preg_match, str_ends_with, str_replace, str_starts_with, strlen, strtolower, substr, trait_exists, var_export;
 
 
 /**
@@ -102,7 +103,7 @@ class Validators
 			$translate = ['boolean' => 'bool', 'integer' => 'int', 'double' => 'float', 'NULL' => 'null'];
 			$type = $translate[gettype($value)] ?? gettype($value);
 			if (is_int($value) || is_float($value) || (is_string($value) && strlen($value) < 40)) {
-				$type .= ' ' . var_export($value, true);
+				$type .= ' ' . var_export($value, return: true);
 			} elseif (is_object($value)) {
 				$type .= ' ' . $value::class;
 			}
@@ -245,7 +246,7 @@ class Validators
 	 */
 	public static function isCallable(mixed $value): bool
 	{
-		return $value && is_callable($value, true);
+		return $value && is_callable($value, syntax_only: true);
 	}
 
 

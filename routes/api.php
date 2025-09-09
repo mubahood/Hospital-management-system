@@ -2,49 +2,50 @@
 
 use App\Http\Controllers\ApiAuthController;
 use App\Http\Controllers\ApiResurceController;
+use App\Http\Controllers\ManifestController;
 use App\Http\Middleware\EnsureTokenIsValid;
+use App\Http\Middleware\JwtMiddleware;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
-
-
 Route::middleware([EnsureTokenIsValid::class])->group(function () {});
-Route::get('users/me', [ApiAuthController::class, 'me']);
-Route::get('users', [ApiAuthController::class, 'users']);
-Route::get('tasks', [ApiAuthController::class, 'tasks']);
-Route::get('consultations', [ApiAuthController::class, 'consultations']);
-Route::get('services', [ApiAuthController::class, 'services']);
-Route::get('dose-item-records', [ApiAuthController::class, 'dose_item_records']);
-Route::POST("dose-item-records-state", [ApiAuthController::class, 'dose_item_records_state']);
+Route::middleware([JwtMiddleware::class])->group(function () {
+    //set header to must return json
+    header('Content-Type: application/json');
+    http_response_code(200);
 
-Route::POST("post-media-upload", [ApiAuthController::class, 'upload_media']);
-Route::POST("update-profile", [ApiAuthController::class, 'update_profile']);
-Route::POST("consultation-card-payment", [ApiAuthController::class, 'consultation_card_payment']);
-Route::POST("consultation-flutterwave-payment", [ApiAuthController::class, 'consultation_flutterwave_payment']);
-Route::POST("flutterwave-payment-verification", [ApiAuthController::class, 'flutterwave_payment_verification']);
-Route::POST("delete-account", [ApiAuthController::class, 'delete_profile']);
-Route::POST("password-change", [ApiAuthController::class, 'password_change']);
-Route::POST("tasks-create", [ApiAuthController::class, 'tasks_create']);
-Route::POST("consultation-create", [ApiAuthController::class, 'consultation_create']);
-Route::POST("meetings", [ApiAuthController::class, 'meetings_create']);
-Route::POST("tasks-update-status", [ApiAuthController::class, 'tasks_update_status']);
+    Route::get('users/me', [ApiAuthController::class, 'me']);
+    Route::get('users', [ApiAuthController::class, 'users']);
+    Route::get('consultations', [ApiAuthController::class, 'consultations']);
+    Route::get('services', [ApiAuthController::class, 'services']);
+    Route::get('dose-item-records', [ApiAuthController::class, 'dose_item_records']);
+    Route::POST("dose-item-records-state", [ApiAuthController::class, 'dose_item_records_state']);
+
+    Route::POST("post-media-upload", [ApiAuthController::class, 'upload_media']);
+    Route::POST("update-profile", [ApiAuthController::class, 'update_profile']);
+    Route::POST("consultation-card-payment", [ApiAuthController::class, 'consultation_card_payment']);
+    Route::POST("consultation-flutterwave-payment", [ApiAuthController::class, 'consultation_flutterwave_payment']);
+    Route::POST("flutterwave-payment-verification", [ApiAuthController::class, 'flutterwave_payment_verification']);
+    Route::POST("delete-account", [ApiAuthController::class, 'delete_profile']);
+    Route::POST("password-change", [ApiAuthController::class, 'password_change']);
+    Route::POST("consultation-create", [ApiAuthController::class, 'consultation_create']);
+    Route::POST("tasks-update-status", [ApiAuthController::class, 'tasks_update_status']);
+
+    Route::get('api/{model}', [ApiResurceController::class, 'index']);
+    Route::post('api/{model}', [ApiResurceController::class, 'update']);
+
+    // Manifest API - Complete application configuration for frontend
+    Route::get('manifest', [ManifestController::class, 'index']);
+    Route::post('manifest/clear-cache', [ManifestController::class, 'clearCache']);
+
+});
+
 Route::POST("users/login", [ApiAuthController::class, "login"]);
 Route::POST("users/register", [ApiAuthController::class, "register"]);
 
-Route::get('api/{model}', [ApiResurceController::class, 'index']);
-Route::post('api/{model}', [ApiResurceController::class, 'update']);
-
+// Public manifest endpoint for unauthenticated users
+Route::get('manifest/public', [ManifestController::class, 'publicManifest']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

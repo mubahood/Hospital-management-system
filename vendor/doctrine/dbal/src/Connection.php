@@ -9,14 +9,19 @@ use Doctrine\DBAL\Cache\CacheException;
 use Doctrine\DBAL\Cache\QueryCacheProfile;
 use Doctrine\DBAL\Driver\API\ExceptionConverter;
 use Doctrine\DBAL\Driver\Connection as DriverConnection;
+use Doctrine\DBAL\Driver\Exception as TheDriverException;
 use Doctrine\DBAL\Driver\ServerInfoAwareConnection;
 use Doctrine\DBAL\Driver\Statement as DriverStatement;
 use Doctrine\DBAL\Event\TransactionBeginEventArgs;
 use Doctrine\DBAL\Event\TransactionCommitEventArgs;
 use Doctrine\DBAL\Event\TransactionRollBackEventArgs;
 use Doctrine\DBAL\Exception\ConnectionLost;
+use Doctrine\DBAL\Exception\DeadlockException;
 use Doctrine\DBAL\Exception\DriverException;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\DBAL\Exception\InvalidArgumentException;
+use Doctrine\DBAL\Exception\TransactionRolledBack;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Query\Expression\ExpressionBuilder;
 use Doctrine\DBAL\Query\QueryBuilder;
@@ -37,6 +42,7 @@ use function assert;
 use function count;
 use function get_class;
 use function implode;
+use function is_array;
 use function is_int;
 use function is_string;
 use function key;
@@ -47,8 +53,8 @@ use function sprintf;
  * A database abstraction-level connection that implements features like events, transaction isolation levels,
  * configuration, emulated transaction nesting, lazy connecting and more.
  *
- * @psalm-import-type Params from DriverManager
- * @psalm-consistent-constructor
+ * @phpstan-import-type Params from DriverManager
+ * @phpstan-consistent-constructor
  */
 class Connection
 {
@@ -130,7 +136,7 @@ class Connection
      * The parameters used during creation of the Connection instance.
      *
      * @var array<string,mixed>
-     * @psalm-var Params
+     * @phpstan-var Params
      */
     private array $params;
 
@@ -174,7 +180,7 @@ class Connection
      * @param Driver              $driver       The driver to use.
      * @param Configuration|null  $config       The configuration, optional.
      * @param EventManager|null   $eventManager The event manager, optional.
-     * @psalm-param Params $params
+     * @phpstan-param Params $params
      *
      * @throws Exception
      */
@@ -238,7 +244,7 @@ class Connection
      * @internal
      *
      * @return array<string,mixed>
-     * @psalm-return Params
+     * @phpstan-return Params
      */
     public function getParams()
     {
@@ -359,7 +365,7 @@ class Connection
      *
      * @throws Exception
      *
-     * @psalm-assert !null $this->_conn
+     * @phpstan-assert !null $this->_conn
      */
     public function connect()
     {
@@ -1137,6 +1143,10 @@ class Connection
 
         if ($item->isHit()) {
             $value = $item->get();
+            if (! is_array($value)) {
+                $value = [];
+            }
+
             if (isset($value[$realKey])) {
                 return new Result(new ArrayResult($value[$realKey]), $this);
             }
@@ -1273,16 +1283,41 @@ class Connection
     public function transactional(Closure $func)
     {
         $this->beginTransaction();
+
+        $successful = false;
+
         try {
             $res = $func($this);
+
+            $successful = true;
+        } finally {
+            if (! $successful) {
+                $this->rollBack();
+            }
+        }
+
+        $shouldRollback = true;
+        try {
             $this->commit();
 
-            return $res;
-        } catch (Throwable $e) {
-            $this->rollBack();
+            $shouldRollback = false;
+        } catch (TheDriverException $t) {
+            $convertedException = $this->handleDriverException($t, null);
+            $shouldRollback     = ! (
+                $convertedException instanceof TransactionRolledBack
+                || $convertedException instanceof UniqueConstraintViolationException
+                || $convertedException instanceof ForeignKeyConstraintViolationException
+                || $convertedException instanceof DeadlockException
+            );
 
-            throw $e;
+            throw $t;
+        } finally {
+            if ($shouldRollback) {
+                $this->rollBack();
+            }
         }
+
+        return $res;
     }
 
     /**
@@ -1312,10 +1347,6 @@ class Connection
             throw ConnectionException::mayNotAlterNestedTransactionWithSavepointsInTransaction();
         }
 
-        if (! $this->getDatabasePlatform()->supportsSavepoints()) {
-            throw ConnectionException::savepointsNotSupported();
-        }
-
         $this->nestTransactionsWithSavepoints = (bool) $nestTransactionsWithSavepoints;
     }
 
@@ -1336,7 +1367,7 @@ class Connection
      */
     protected function _getNestedTransactionSavePointName()
     {
-        return 'DOCTRINE2_SAVEPOINT_' . $this->transactionNestingLevel;
+        return 'DOCTRINE_' . $this->transactionNestingLevel;
     }
 
     /**
@@ -1418,12 +1449,21 @@ class Connection
 
         $connection = $this->getWrappedConnection();
 
-        if ($this->transactionNestingLevel === 1) {
-            $result = $this->doCommit($connection);
-        } elseif ($this->nestTransactionsWithSavepoints) {
-            $this->releaseSavepoint($this->_getNestedTransactionSavePointName());
+        try {
+            if ($this->transactionNestingLevel === 1) {
+                $result = $this->doCommit($connection);
+            } elseif ($this->nestTransactionsWithSavepoints) {
+                $this->releaseSavepoint($this->_getNestedTransactionSavePointName());
+            }
+        } finally {
+            $this->updateTransactionStateAfterCommit();
         }
 
+        return $result;
+    }
+
+    private function updateTransactionStateAfterCommit(): void
+    {
         --$this->transactionNestingLevel;
 
         $eventManager = $this->getEventManager();
@@ -1440,12 +1480,10 @@ class Connection
         }
 
         if ($this->autoCommit !== false || $this->transactionNestingLevel !== 0) {
-            return $result;
+            return;
         }
 
         $this->beginTransaction();
-
-        return $result;
     }
 
     /**
@@ -1794,7 +1832,7 @@ class Connection
                             'doctrine/dbal',
                             'https://github.com/doctrine/dbal/pull/5550',
                             'Using NULL as prepared statement parameter type is deprecated.'
-                                . 'Omit or use Parameter::STRING instead',
+                                . 'Omit or use ParameterType::STRING instead',
                         );
                     }
 
@@ -1817,7 +1855,7 @@ class Connection
                             'doctrine/dbal',
                             'https://github.com/doctrine/dbal/pull/5550',
                             'Using NULL as prepared statement parameter type is deprecated.'
-                                . 'Omit or use Parameter::STRING instead',
+                                . 'Omit or use ParameterType::STRING instead',
                         );
                     }
 

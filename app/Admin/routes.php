@@ -50,8 +50,10 @@ Route::group([
     $router->resource('progress-monitoring', ProgressMonitoringController::class);
     $router->resource('cards', CardsController::class);
     $router->resource('card-records', CardRecordController::class);
-    $router->resource('flutter-wave-logs', FlutterWaveLogController::class); 
-    $router->resource('doses', DoseController::class); 
+    $router->resource('flutter-wave-logs', FlutterWaveLogController::class);
+    $router->resource('doses', DoseController::class);
     $router->resource('dose-item-records', DoseItemRecordController::class);
 
+
+    $router->resource('test-models', TestModelController::class);
 });

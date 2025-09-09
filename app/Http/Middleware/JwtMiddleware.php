@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Utils;
 use Closure;
+use Dflydev\DotAccessData\Util;
 use JWTAuth;
 use Exception;
 use Tymon\JWTAuth\Facades\JWTAuth as FacadesJWTAuth;
@@ -22,7 +23,13 @@ class JwtMiddleware extends BaseMiddleware
      */
     protected $except = [
         'login',
+        'auth/login',
+        'auth/register',
+        'auth/password-reset',
         'register',
+        'users/register',
+        'users/login',
+        'api/otp-verify',
         'min/login',
     ];
 
@@ -32,9 +39,12 @@ class JwtMiddleware extends BaseMiddleware
             return $next($request);
         }
 
+        //check if request is login or register
 
         if (
             Str::contains($_SERVER['REQUEST_URI'], 'login') ||
+            Str::contains($_SERVER['REQUEST_URI'], 'otp') ||
+            Str::contains($_SERVER['REQUEST_URI'], 'otp-verify') ||
             Str::contains($_SERVER['REQUEST_URI'], 'register')
         ) {
             return $next($request);
@@ -72,13 +82,11 @@ class JwtMiddleware extends BaseMiddleware
             $user = FacadesJWTAuth::parseToken()->authenticate();
         } catch (Exception $e) {
             if ($e instanceof \Tymon\JWTAuth\Exceptions\TokenInvalidException) {
-                return $next($request);
-                return response()->json(['status' => 'Token is Invalid']);
+                return Utils::error('Token is Invalid: ' . $e->getMessage()." The token is: ".$Authorization);
             } else if ($e instanceof \Tymon\JWTAuth\Exceptions\TokenExpiredException) {
-                return $next($request);
-                return response()->json(['status' => 'Token is Expired']);
+                return Utils::error('Token is Expired: ' . $e->getMessage()." The token is: ".$Authorization);
             } else {
-                return Utils::error($e->getMessage());
+                return Utils::error('User not authenticated: ' . $e->getMessage()." The token is: ".$Authorization);
             }
         }
         return $next($request);
