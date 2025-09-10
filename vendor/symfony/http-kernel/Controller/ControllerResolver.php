@@ -159,7 +159,6 @@ class ControllerResolver implements ControllerResolverInterface
 
         if (\is_object($callable)) {
             $availableMethods = $this->getClassMethodsWithoutMagicMethods($callable);
-            $alternativeMsg = $availableMethods ? sprintf(' or use one of the available methods: "%s"', implode('", "', $availableMethods)) : '';
 
             return sprintf('Controller class "%s" cannot be called without a method name. You need to implement "__invoke"%s.', get_debug_type($callable), $alternativeMsg);
         }

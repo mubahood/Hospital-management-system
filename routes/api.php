@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([EnsureTokenIsValid::class])->group(function () {});
 Route::middleware([JwtMiddleware::class])->group(function () {
-    //set header to must return json
-    header('Content-Type: application/json');
-    http_response_code(200);
+    // API routes protected by JWT middleware
 
     Route::get('users/me', [ApiAuthController::class, 'me']);
     Route::get('users', [ApiAuthController::class, 'users']);
