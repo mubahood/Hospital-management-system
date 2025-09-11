@@ -2,7 +2,7 @@ php artisan migrate
 
 php artisan make:migration create_courses_table
 
-php artisan make:migration change_date_for_dose_item_records --table=dose_item_records
+php artisan make:migration change_managed_by_type_admin_users --table=admin_users
  
 php artisan admin:make DoseItemRecordController --model=App\\Models\\DoseItemRecord
  

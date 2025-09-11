@@ -785,8 +785,48 @@ class ApiResurceController extends Controller
      */
     private function handleFileUploads(Request $r, $obj)
     {
-        // Placeholder for file upload handling
-        // Can be extended based on your file upload requirements
+        foreach ($r->allFiles() as $fieldName => $file) {
+            if (!empty($file) && $file->isValid()) {
+                try {
+                    // Upload directory path
+                    $uploadPath = public_path('storage/images');
+
+                    // Generate unique filename
+                    $originalName = $file->getClientOriginalName();
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = time() . '_' . uniqid() . '.' . $extension;
+
+                    // Move file to public/storage/images/
+                    $file->move($uploadPath, $filename);
+
+                    // Get relative path for database storage
+                    $relativePath = 'storage/images/' . $filename;
+
+                    // Update the model field with the file path
+                    $obj->$fieldName = $relativePath;
+                    $obj->save();
+
+                    Log::info("File uploaded successfully", [
+                        'field' => $fieldName,
+                        'original_name' => $originalName,
+                        'stored_path' => $relativePath,
+                        'model' => get_class($obj),
+                        'model_id' => $obj->id
+                    ]);
+
+                } catch (Exception $e) {
+                    Log::error("File upload failed", [
+                        'field' => $fieldName,
+                        'error' => $e->getMessage(),
+                        'model' => get_class($obj),
+                        'model_id' => $obj->id
+                    ]);
+                    
+                    // Don't throw exception, just log and continue
+                    // The form submission should still succeed even if file upload fails
+                }
+            }
+        }
     }
 
     /**

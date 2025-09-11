@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class ChangeBelongsToCompanyStatus extends Migration
+class ChangeManagedByTypeAdminUsers extends Migration
 {
     /**
      * Run the migrations.
@@ -14,7 +14,7 @@ class ChangeBelongsToCompanyStatus extends Migration
     public function up()
     {
         Schema::table('admin_users', function (Blueprint $table) {
-            $table->enum('belongs_to_company_status', ['Pending', 'Active', 'Deactive'])->default('Pending'); 
+            $table->text('managed_by')->nullable()->change();
         });
     }
 

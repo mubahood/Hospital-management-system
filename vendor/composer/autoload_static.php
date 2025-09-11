@@ -358,8 +358,8 @@ class ComposerStaticInitda89eef54c810448a827ed04bb3da82f
         ),
         'Psr\\Http\\Message\\' => 
         array (
-            0 => __DIR__ . '/..' . '/psr/http-message/src',
-            1 => __DIR__ . '/..' . '/psr/http-factory/src',
+            0 => __DIR__ . '/..' . '/psr/http-factory/src',
+            1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
         'Psr\\Http\\Client\\' => 
         array (
@@ -645,6 +645,7 @@ class ComposerStaticInitda89eef54c810448a827ed04bb3da82f
         'App\\Admin\\Controllers\\StockOutRecordController' => __DIR__ . '/../..' . '/app/Admin/Controllers/StockOutRecordController.php',
         'App\\Admin\\Controllers\\TargetController' => __DIR__ . '/../..' . '/app/Admin/Controllers/TargetController.php',
         'App\\Admin\\Controllers\\TaskController' => __DIR__ . '/../..' . '/app/Admin/Controllers/TaskController.php',
+        'App\\Admin\\Controllers\\TestModelController' => __DIR__ . '/../..' . '/app/Admin/Controllers/TestModelController.php',
         'App\\Admin\\Controllers\\TreatmentRecordController' => __DIR__ . '/../..' . '/app/Admin/Controllers/TreatmentRecordController.php',
         'App\\Admin\\Controllers\\TreatmentRecordItemController' => __DIR__ . '/../..' . '/app/Admin/Controllers/TreatmentRecordItemController.php',
         'App\\Admin\\Controllers\\UserController' => __DIR__ . '/../..' . '/app/Admin/Controllers/UserController.php',
@@ -684,6 +685,7 @@ class ComposerStaticInitda89eef54c810448a827ed04bb3da82f
         'App\\Http\\Controllers\\ApiResurceController' => __DIR__ . '/../..' . '/app/Http/Controllers/ApiResurceController.php',
         'App\\Http\\Controllers\\Controller' => __DIR__ . '/../..' . '/app/Http/Controllers/Controller.php',
         'App\\Http\\Controllers\\MainController' => __DIR__ . '/../..' . '/app/Http/Controllers/MainController.php',
+        'App\\Http\\Controllers\\ManifestController' => __DIR__ . '/../..' . '/app/Http/Controllers/ManifestController.php',
         'App\\Http\\Kernel' => __DIR__ . '/../..' . '/app/Http/Kernel.php',
         'App\\Http\\Middleware\\Authenticate' => __DIR__ . '/../..' . '/app/Http/Middleware/Authenticate.php',
         'App\\Http\\Middleware\\EncryptCookies' => __DIR__ . '/../..' . '/app/Http/Middleware/EncryptCookies.php',
@@ -725,6 +727,7 @@ class ComposerStaticInitda89eef54c810448a827ed04bb3da82f
         'App\\Models\\StockOutRecord' => __DIR__ . '/../..' . '/app/Models/StockOutRecord.php',
         'App\\Models\\Target' => __DIR__ . '/../..' . '/app/Models/Target.php',
         'App\\Models\\Task' => __DIR__ . '/../..' . '/app/Models/Task.php',
+        'App\\Models\\TestModel' => __DIR__ . '/../..' . '/app/Models/TestModel.php',
         'App\\Models\\TreatmentRecord' => __DIR__ . '/../..' . '/app/Models/TreatmentRecord.php',
         'App\\Models\\TreatmentRecordItem' => __DIR__ . '/../..' . '/app/Models/TreatmentRecordItem.php',
         'App\\Models\\User' => __DIR__ . '/../..' . '/app/Models/User.php',
