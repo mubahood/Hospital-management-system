@@ -31,7 +31,12 @@ Route::middleware([JwtMiddleware::class])->group(function () {
     Route::POST("tasks-update-status", [ApiAuthController::class, 'tasks_update_status']);
 
     Route::get('api/{model}', [ApiResurceController::class, 'index']);
+    Route::get('api/{model}/{id}', [ApiResurceController::class, 'show']);
     Route::post('api/{model}', [ApiResurceController::class, 'update']);
+    Route::put('api/{model}', [ApiResurceController::class, 'update']);
+    Route::patch('api/{model}', [ApiResurceController::class, 'update']);
+    Route::put('api/{model}/{id}', [ApiResurceController::class, 'update']);
+    Route::patch('api/{model}/{id}', [ApiResurceController::class, 'update']);
 
     // Manifest API - Complete application configuration for frontend
     Route::get('manifest', [ManifestController::class, 'index']);

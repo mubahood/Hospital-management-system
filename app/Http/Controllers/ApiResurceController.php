@@ -200,9 +200,90 @@ class ApiResurceController extends Controller
         }
     }
 
+    /**
+     * Show a specific resource by ID
+     * Uses the same dynamic approach as index() method with where clause
+     * 
+     * @param Request $r
+     * @param string $model
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show(Request $r, $model)
+    {
+        $u = null; // Initialize user variable
+        
+        try {
+            // Authentication and authorization (same as index method)
+            $u = Auth::user();
+            if ($u == null) {
+                return $this->error('User not authenticated.', 401);
+            }
 
+            // Validate enterprise_id for SAAS multi-tenancy
+            if (empty($u->enterprise_id)) {
+                return $this->error('Enterprise ID is required for data access.', 403);
+            }
 
+            // Validate model class exists
+            $className = "App\\Models\\" . $model;
+            if (!class_exists($className)) {
+                return $this->error("Model {$model} not found.", 404);
+            }
 
+            // Get the ID from the route parameter
+            $id = $r->route('id');
+            if (!$id) {
+                return $this->error('ID parameter is required.', 400);
+            }
+
+            // Build base query with enterprise isolation (same as index method)
+            $query = $className::query();
+            
+            // Apply multi-tenant security if model has enterprise_id
+            if (Schema::hasColumn((new $className)->getTable(), 'enterprise_id')) {
+                $query->where('enterprise_id', $u->enterprise_id);
+            }
+
+            // Add the ID filter (your suggested approach)
+            $query->where('id', $id);
+
+            // Apply eager loading if specified
+            $with = $r->get('with');
+            if ($with) {
+                $relations = is_array($with) ? $with : explode(',', $with);
+                $query->with($relations);
+            }
+
+            // Apply field selection if specified
+            $select = $r->get('select');
+            if ($select) {
+                $fields = is_array($select) ? $select : explode(',', $select);
+                $query->select($fields);
+            }
+
+            // Find the record using first() instead of find() for consistency
+            $record = $query->first();
+
+            if (!$record) {
+                return $this->error("Record with ID {$id} not found or access denied.", 404);
+            }
+
+            // Return record directly (matching your expected response format)
+            return $this->success($record, 'Record retrieved successfully');
+
+        } catch (Exception $e) {
+            Log::error("API Resource Show Error: " . $e->getMessage(), [
+                'model' => $model,
+                'id' => $r->route('id'),
+                'user_id' => $u->id ?? null,
+                'enterprise_id' => $u->enterprise_id ?? null,
+                'request' => $r->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->error('An error occurred while retrieving the record: ' . $e->getMessage(), 500);
+        }
+    }
 
     public function delete(Request $r, $model)
     {
