@@ -7,3 +7,5 @@ php artisan make:migration change_managed_by_type_admin_users --table=admin_user
 php artisan admin:make DoseItemRecordController --model=App\\Models\\DoseItemRecord
  
 php artisan make:model DoseItemRecord -m
+
+now go ahead and create a complete module of Consulation (list,form,details). learn very carefully from the complete one (employees), read the documantion of admin side module creation, mainatin the consitence 
