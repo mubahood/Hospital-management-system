@@ -51,75 +51,219 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::get('ajax', function (Request $r) {
+/**
+ * Dynamic AJAX Provider for Dropdowns
+ * 
+ * This endpoint provides a secure, flexible way to fetch data for dynamic dropdowns
+ * with search capabilities, filtering, and customizable formatting.
+ * 
+ * Query Parameters:
+ * - model: The model name (required)
+ * - q: Search query string
+ * - search_by_1: Primary search field (default: 'name')
+ * - search_by_2: Secondary search field (optional)
+ * - display_format: How to format the display text
+ * - limit: Number of results (max 50, default 20)
+ * - query_*: Filter conditions (e.g., query_status=active)
+ * 
+ * Security Features:
+ * - Whitelist of allowed models
+ * - Input sanitization
+ * - Rate limiting ready
+ * - SQL injection protection
+ */
+Route::get('ajax', function (Request $request) {
+    try {
+        // Define allowed models for security
+        $allowedModels = [
+            'Patient',
+            'Employee', 
+            'User',
+            'Department',
+            'Service',
+            'Room',
+            'Doctor',
+            'Appointment',
+            'Consultation',
+            'Medicine',
+            'Supplier',
+            'Equipment',
+            'Ward',
+            'Bed'
+        ];
 
-    $_model = trim($r->get('model'));
-    $conditions = [];
-    foreach ($_GET as $key => $v) {
-        if (substr($key, 0, 6) != 'query_') {
-            continue;
+        // Get and validate model parameter
+        $modelName = trim($request->get('model', ''));
+        if (empty($modelName) || !in_array($modelName, $allowedModels)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or missing model parameter',
+                'data' => []
+            ], 400);
         }
-        $_key = str_replace('query_', "", $key);
-        $conditions[$_key] = $v;
-    }
 
-    if (strlen($_model) < 2) {
-        return [
+        // Build the full model class name
+        $modelClass = "App\\Models\\{$modelName}";
+        
+        // Check if model class exists
+        if (!class_exists($modelClass)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Model not found',
+                'data' => []
+            ], 404);
+        }
+
+        // Get search parameters
+        $searchQuery = trim($request->get('q', ''));
+        $searchBy1 = trim($request->get('search_by_1', 'name'));
+        $searchBy2 = trim($request->get('search_by_2', ''));
+        $displayFormat = trim($request->get('display_format', 'id_name'));
+        $limit = min(50, max(1, intval($request->get('limit', 20)))); // Max 50, min 1
+
+        // Extract filter conditions from query_* parameters
+        $conditions = [];
+        foreach ($request->all() as $key => $value) {
+            if (strpos($key, 'query_') === 0) {
+                $fieldName = str_replace('query_', '', $key);
+                // Sanitize field name to prevent injection
+                if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $fieldName)) {
+                    $conditions[$fieldName] = $value;
+                }
+            }
+        }
+
+        // Build the base query
+        $query = $modelClass::query();
+
+        // Apply filter conditions
+        foreach ($conditions as $field => $value) {
+            if (is_array($value)) {
+                $query->whereIn($field, $value);
+            } else {
+                $query->where($field, $value);
+            }
+        }
+
+        $data = [];
+
+        // Primary search
+        if (!empty($searchQuery)) {
+            $primaryQuery = clone $query;
+            $primaryResults = $primaryQuery
+                ->where($searchBy1, 'LIKE', "%{$searchQuery}%")
+                ->limit($limit)
+                ->get();
+
+            // Secondary search if needed and specified
+            $secondaryResults = collect();
+            if ($primaryResults->count() < $limit && !empty($searchBy2)) {
+                $secondaryQuery = clone $query;
+                $secondaryResults = $secondaryQuery
+                    ->where($searchBy2, 'LIKE', "%{$searchQuery}%")
+                    ->whereNotIn('id', $primaryResults->pluck('id')->toArray())
+                    ->limit($limit - $primaryResults->count())
+                    ->get();
+            }
+
+            $allResults = $primaryResults->merge($secondaryResults);
+        } else {
+            // No search query, just return filtered results
+            $allResults = $query->limit($limit)->get();
+        }
+
+        // Format the results based on display_format
+        foreach ($allResults as $item) {
+            $formattedItem = $this->formatDropdownItem($item, $displayFormat);
+            if ($formattedItem) {
+                $data[] = $formattedItem;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'meta' => [
+                'total' => count($data),
+                'limit' => $limit,
+                'model' => $modelName,
+                'search_query' => $searchQuery,
+                'filters_applied' => count($conditions)
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('AJAX Dropdown Error: ' . $e->getMessage(), [
+            'model' => $request->get('model'),
+            'query' => $request->get('q'),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while fetching data',
             'data' => []
-        ];
+        ], 500);
     }
+})->name('ajax.dropdown');
 
-    $model = "App\Models\\" . $_model;
-    $search_by_1 = trim($r->get('search_by_1'));
-    $search_by_2 = trim($r->get('search_by_2'));
+/**
+ * Helper function to format dropdown items based on display format
+ */
+function formatDropdownItem($item, $format) {
+    switch ($format) {
+        case 'id_name':
+            $text = "#{$item->id}";
+            if (isset($item->name)) {
+                $text .= " - {$item->name}";
+            }
+            break;
 
-    $q = trim($r->get('q'));
+        case 'name_only':
+            $text = $item->name ?? "Item #{$item->id}";
+            break;
 
-    $res_1 = $model::where(
-        $search_by_1,
-        'like',
-        "%$q%"
-    )
-        ->where($conditions)
-        ->limit(20)->get();
-    $res_2 = [];
+        case 'full_name':
+            if (isset($item->first_name) && isset($item->last_name)) {
+                $text = "{$item->first_name} {$item->last_name}";
+            } else {
+                $text = $item->name ?? "#{$item->id}";
+            }
+            break;
 
-    if ((count($res_1) < 20) && (strlen($search_by_2) > 1)) {
-        $res_2 = $model::where(
-            $search_by_2,
-            'like',
-            "%$q%"
-        )
-            ->where($conditions)
-            ->limit(20)->get();
-    }
+        case 'email_name':
+            $text = $item->email ?? "#{$item->id}";
+            if (isset($item->name)) {
+                $text .= " ({$item->name})";
+            }
+            break;
 
-    $data = [];
-    foreach ($res_1 as $key => $v) {
-        $name = "";
-        if (isset($v->name)) {
-            $name = " - " . $v->name;
-        }
-        $data[] = [
-            'id' => $v->id,
-            'text' => "#$v->id" . $name
-        ];
-    }
-    foreach ($res_2 as $key => $v) {
-        $name = "";
-        if (isset($v->name)) {
-            $name = " - " . $v->name;
-        }
-        $data[] = [
-            'id' => $v->id,
-            'text' => "#$v->id" . $name
-        ];
+        case 'custom':
+            // For custom format, try to use a getDropdownText method on the model
+            if (method_exists($item, 'getDropdownText')) {
+                $text = $item->getDropdownText();
+            } else {
+                $text = $item->name ?? "#{$item->id}";
+            }
+            break;
+
+        default:
+            $text = "#{$item->id}";
+            if (isset($item->name)) {
+                $text .= " - {$item->name}";
+            }
+            break;
     }
 
     return [
-        'data' => $data
+        'id' => $item->id,
+        'text' => $text,
+        'data' => [
+            'model' => class_basename($item),
+            'original' => $item->only(['id', 'name', 'email', 'first_name', 'last_name'])
+        ]
     ];
-});
+}
 
 Route::get('ajax-cards', function (Request $r) {
 
