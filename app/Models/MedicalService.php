@@ -31,6 +31,9 @@ class MedicalService extends Model
         'total_price',
         'quantity',
         'unit_price',
+        'primary_stock_item_id',
+        'stock_quantity_used',
+        'stock_item_notes',
     ];
 
 

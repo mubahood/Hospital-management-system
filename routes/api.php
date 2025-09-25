@@ -30,6 +30,17 @@ Route::middleware([JwtMiddleware::class])->group(function () {
     Route::POST("consultation-create", [ApiAuthController::class, 'consultation_create']);
     Route::POST("tasks-update-status", [ApiAuthController::class, 'tasks_update_status']);
 
+    // Medical Services API routes
+    Route::get('medical-services', [\App\Http\Controllers\Api\MedicalServiceController::class, 'index']);
+    Route::post('medical-services', [\App\Http\Controllers\Api\MedicalServiceController::class, 'store']);
+    Route::get('medical-services/{id}', [\App\Http\Controllers\Api\MedicalServiceController::class, 'show']);
+    Route::put('medical-services/{id}', [\App\Http\Controllers\Api\MedicalServiceController::class, 'update']);
+    Route::delete('medical-services/{id}', [\App\Http\Controllers\Api\MedicalServiceController::class, 'destroy']);
+
+    // Specialized AJAX endpoints for dropdowns
+    Route::get('ajax/consultations', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getConsultationsForDropdown']);
+    Route::get('ajax/employees', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getEmployeesForDropdown']);
+
     // Dynamic API routes - support both create and update operations
     Route::get('api/{model}', [ApiResurceController::class, 'index']);
     Route::get('api/{model}/{id}', [ApiResurceController::class, 'show']);
@@ -89,7 +100,8 @@ Route::get('ajax', function (Request $request) {
             'Supplier',
             'Equipment',
             'Ward',
-            'Bed'
+            'Bed',
+            'StockItem'
         ];
 
         // Get and validate model parameter
@@ -265,6 +277,21 @@ function formatDropdownItem($item, $format) {
             }
             break;
 
+        case 'consultation_patient':
+            // Format: "CON-001 - John Doe" for consultations
+            $consultationNumber = $item->consultation_number ?? "CON-{$item->id}";
+            $patientName = $item->patient_name ?? 'Unknown Patient';
+            $text = "{$consultationNumber} - {$patientName}";
+            break;
+
+        case 'stock_item_with_quantity':
+            // Format: "Paracetamol (50 tablets)" for stock items
+            $name = $item->name ?? "Item #{$item->id}";
+            $quantity = $item->current_quantity ?? 0;
+            $unit = $item->measuring_unit ?? 'units';
+            $text = "{$name} ({$quantity} {$unit})";
+            break;
+
         case 'custom':
             // For custom format, try to use a getDropdownText method on the model
             if (method_exists($item, 'getDropdownText')) {
@@ -287,7 +314,11 @@ function formatDropdownItem($item, $format) {
         'text' => $text,
         'data' => [
             'model' => class_basename($item),
-            'original' => $item->only(['id', 'name', 'email', 'first_name', 'last_name', 'phone_number_1', 'user_type'])
+            'original' => $item->only([
+                'id', 'name', 'email', 'first_name', 'last_name', 'phone_number_1', 'user_type',
+                'consultation_number', 'patient_name', 'patient_id', 'main_status',
+                'current_quantity', 'measuring_unit', 'sale_price'
+            ])
         ]
     ];
 }
