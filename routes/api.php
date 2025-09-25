@@ -76,13 +76,13 @@ Route::get('ajax', function (Request $request) {
     try {
         // Define allowed models for security
         $allowedModels = [
-            'Patient',
+            'Patient', // Special case - handled as User with user_type = 'Patient'
             'Employee', 
             'User',
+            'Doctor', // Special case - handled as User with user_type = 'Doctor'
             'Department',
             'Service',
             'Room',
-            'Doctor',
             'Appointment',
             'Consultation',
             'Medicine',
@@ -102,8 +102,20 @@ Route::get('ajax', function (Request $request) {
             ], 400);
         }
 
+        // Handle special cases for Patient and Doctor
+        $actualModelName = $modelName;
+        $extraConditions = [];
+        
+        if ($modelName === 'Patient') {
+            $actualModelName = 'User';
+            $extraConditions['user_type'] = 'Patient';
+        } elseif ($modelName === 'Doctor') {
+            $actualModelName = 'User';
+            $extraConditions['user_type'] = 'Doctor';
+        }
+
         // Build the full model class name
-        $modelClass = "App\\Models\\{$modelName}";
+        $modelClass = "App\\Models\\{$actualModelName}";
         
         // Check if model class exists
         if (!class_exists($modelClass)) {
@@ -136,7 +148,12 @@ Route::get('ajax', function (Request $request) {
         // Build the base query
         $query = $modelClass::query();
 
-        // Apply filter conditions
+        // Apply special model conditions first (like user_type for Patient/Doctor)
+        foreach ($extraConditions as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        // Apply filter conditions from query_* parameters
         foreach ($conditions as $field => $value) {
             if (is_array($value)) {
                 $query->whereIn($field, $value);
@@ -174,7 +191,7 @@ Route::get('ajax', function (Request $request) {
 
         // Format the results based on display_format
         foreach ($allResults as $item) {
-            $formattedItem = $this->formatDropdownItem($item, $displayFormat);
+            $formattedItem = formatDropdownItem($item, $displayFormat);
             if ($formattedItem) {
                 $data[] = $formattedItem;
             }
@@ -225,9 +242,19 @@ function formatDropdownItem($item, $format) {
 
         case 'full_name':
             if (isset($item->first_name) && isset($item->last_name)) {
-                $text = "{$item->first_name} {$item->last_name}";
+                $text = trim("{$item->first_name} {$item->last_name}");
+            } elseif (isset($item->name)) {
+                $text = $item->name;
             } else {
-                $text = $item->name ?? "#{$item->id}";
+                $text = "#{$item->id}";
+            }
+            // Add additional info for patients
+            if (isset($item->user_type) && $item->user_type === 'Patient') {
+                if (isset($item->phone_number_1) && !empty($item->phone_number_1)) {
+                    $text .= " - {$item->phone_number_1}";
+                } elseif (isset($item->email) && !empty($item->email)) {
+                    $text .= " - {$item->email}";
+                }
             }
             break;
 
@@ -260,7 +287,7 @@ function formatDropdownItem($item, $format) {
         'text' => $text,
         'data' => [
             'model' => class_basename($item),
-            'original' => $item->only(['id', 'name', 'email', 'first_name', 'last_name'])
+            'original' => $item->only(['id', 'name', 'email', 'first_name', 'last_name', 'phone_number_1', 'user_type'])
         ]
     ];
 }

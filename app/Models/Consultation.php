@@ -19,7 +19,26 @@ class Consultation extends Model
         parent::boot();
 
         static::creating(function ($model) {
+            $loggedInUser = Auth::user();
+            if ($loggedInUser != null) {
+                $model->company_id = $loggedInUser->company_id;
+                if ($model->receptionist_id == null) {
+                    $model->receptionist_id = $loggedInUser->id; 
+                }
+                if ($model->specialist_id == null) {  
+                    $model->specialist_id = $loggedInUser->id;
+                }
+            } else {
+                throw new \Exception('User not authenticated. Cannot create consultation.');
+            }
+
             $model = Consultation::do_prepare($model);
+            $model->enterprise_id = $loggedInUser->enterprise_id;
+
+            // Handle new patient creation if is_new_patient is true
+            if ($model->is_new_patient) {
+                $model = Consultation::handle_new_patient_creation($model);
+            }
         });
 
         static::updating(function ($model) {
@@ -45,27 +64,52 @@ class Consultation extends Model
 
     static function do_prepare($model)
     {
-        $patient = User::find($model->patient_id);
-        if ($patient == null) {
-            $model->patient_id = 1;
-            $model->save();
+        // If this is a new patient consultation, skip patient validation temporarily
+        if ($model->is_new_patient && !isset($model->patient_created_successfully)) {
+            // Patient will be created in handle_new_patient_creation
+            // Set basic consultation details first
+            $loggedUser = Auth::user();
+            if ($loggedUser != null) {
+                $model->company_id = $loggedUser->company_id;
+                if ($model->receptionist_id == null) {
+                    $model->receptionist_id = $loggedUser->id;
+                }
+            }
+
+            if ($model->consultation_number == null || strlen($model->consultation_number) < 2) {
+                $model->consultation_number = Consultation::generate_consultation_number();
+            }
+
             return $model;
-            throw new \Exception('Patient not found');
         }
-        $patient->company_id = $model->company_id;
+
+        // Handle existing patient validation
+        if (!$model->is_new_patient) {
+            // Only validate patient_id for existing patient consultations
+            $patient = User::find($model->patient_id);
+            if ($patient == null) {
+                throw new \Exception('Patient not found. Please select a valid patient.');
+            }
+
+            $patient->company_id = $model->company_id;
+            $model->patient_name = $patient->name;
+            $model->patient_contact = $patient->phone_number_1;
+            $model->contact_address = $patient->current_address;
+        } else {
+            // For new patient consultations, patient_id will be set after patient creation
+            // Just set the logged user context for now
+            $loggedUser = Auth::user();
+            if ($loggedUser != null) {
+                $model->company_id = $loggedUser->company_id;
+            }
+        }
+
         $receptionist = User::find($model->receptionist_id);
         $loggedUser = Auth::user();
-        if ($loggedUser == null) {
-            $loggedUser = $patient;
-            //throw new \Exception('You are not logged in.');
-        }
+
         if ($receptionist == null) {
             $model->receptionist_id = $loggedUser->id;
         }
-        $model->company_id = $loggedUser->company_id;
-        $model->patient_name = $patient->name;
-        $model->patient_contact = $patient->phone_number_1;
-        $model->contact_address = $patient->current_address;
 
         if ($model->consultation_number == null || strlen($model->consultation_number) < 2) {
             $model->consultation_number = Consultation::generate_consultation_number();
@@ -85,6 +129,80 @@ class Consultation extends Model
             'created_at' => date('Y-m-d')
         ])->count();
         return $year . '-' . $month . '-' . $day . '-' . ($count + 1);
+    }
+
+    //static function to handle new patient creation
+    static function handle_new_patient_creation($model)
+    {
+        // Validate required new patient fields
+        if (empty($model->new_patient_first_name) || empty($model->new_patient_last_name)) {
+            throw new \Exception('Patient first name and last name are required for new patients.');
+        }
+
+        if (empty($model->new_patient_phone) && empty($model->new_patient_email)) {
+            throw new \Exception('Either phone number or email is required for new patients.');
+        }
+
+        // Check if patient with same email already exists
+        if (!empty($model->new_patient_email)) {
+            $existingPatient = User::where('email', $model->new_patient_email)->first();
+            if ($existingPatient) {
+                throw new \Exception('A patient with this email already exists. Please use existing patient option.');
+            }
+        }
+
+        // Check if patient with same phone already exists
+        if (!empty($model->new_patient_phone)) {
+            $existingPatient = User::where('phone_number_1', $model->new_patient_phone)->first();
+            if ($existingPatient) {
+                throw new \Exception('A patient with this phone number already exists. Please use existing patient option.');
+            }
+        }
+
+        try {
+            // Get logged user for company assignment
+            $loggedUser = Auth::user();
+            $companyId = $loggedUser ? $loggedUser->company_id : 1;
+
+            // Create new patient
+            $newPatient = new User();
+            $newPatient->first_name = $model->new_patient_first_name;
+            $newPatient->last_name = $model->new_patient_last_name;
+            $newPatient->name = $model->new_patient_first_name . ' ' . $model->new_patient_last_name;
+            $newPatient->email = $model->new_patient_email;
+            $newPatient->phone_number_1 = $model->new_patient_phone;
+            $newPatient->current_address = $model->new_patient_address;
+            $newPatient->date_of_birth = $model->new_patient_date_of_birth;
+            $newPatient->sex = $model->new_patient_gender;
+            $newPatient->company_id = $companyId;
+
+            // Set patient-specific defaults
+            $newPatient->user_type = 'Patient';
+            $newPatient->status = 'Active';
+            $newPatient->card_status = 'Active';
+            $newPatient->username = $model->new_patient_email ?: $model->new_patient_phone;
+            $newPatient->password = bcrypt('patient123'); // Default password
+
+            // Save the new patient
+            $newPatient->save();
+
+            // Update consultation with new patient ID
+            $model->patient_id = $newPatient->id;
+            $model->patient_created_successfully = true; // Flag to prevent recursion
+
+            // Clear temporary patient fields after successful creation
+            $model->new_patient_first_name = null;
+            $model->new_patient_last_name = null;
+            $model->new_patient_email = null;
+            $model->new_patient_phone = null;
+            $model->new_patient_address = null;
+            $model->new_patient_date_of_birth = null;
+            $model->new_patient_gender = null;
+
+            return $model;
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to create new patient: ' . $e->getMessage());
+        }
     }
 
     //has many MedicalService
