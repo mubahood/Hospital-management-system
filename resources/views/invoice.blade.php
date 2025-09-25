@@ -172,9 +172,15 @@ $logo = public_path('storage/' . $company->logo);
                 <p>{{ $item->patient->current_address }},</p>
                 <p>{{ $item->patient->phone_number_1 }}{{ $item->patient->phone_number_1 != null && strlen($item->patient->phone_number_2) > 0 ? ', ' . $item->patient->phone_number_2 : '' }}{{ $item->patient->company_id != 1 ? ', ' : '.' }}
                 </p>
-                @if ($item->patient->company_id != 1)
+                @php
+                    if($item->patient == null ){
+                        $item->patient->delete();
+                        return;
+                    }
+                @endphp
+{{--                 @if ($item->patient->company_id != 1)
                     <p>{{ $item->patient->company->name }}.</p>
-                @endif
+                @endif --}}
             </td>
             <td class="w-50" style="text-align: right;">
                 <br>

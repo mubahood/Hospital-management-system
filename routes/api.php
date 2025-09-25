@@ -40,6 +40,7 @@ Route::middleware([JwtMiddleware::class])->group(function () {
     // Specialized AJAX endpoints for dropdowns
     Route::get('ajax/consultations', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getConsultationsForDropdown']);
     Route::get('ajax/employees', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getEmployeesForDropdown']);
+    Route::get('ajax/stock-items', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getStockItemsForDropdown']);
 
     // Dynamic API routes - support both create and update operations
     Route::get('api/{model}', [ApiResurceController::class, 'index']);

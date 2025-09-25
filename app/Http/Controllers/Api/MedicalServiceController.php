@@ -58,6 +58,8 @@ class MedicalServiceController extends Controller
                     'status' => $service->status,
                     'instruction' => $service->instruction,
                     'specialist_outcome' => $service->specialist_outcome,
+                    'description' => $service->description,
+                    'remarks' => $service->remarks,
                     'created_at' => $service->created_at?->format('Y-m-d H:i:s'),
                     'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
                 ];
@@ -94,7 +96,7 @@ class MedicalServiceController extends Controller
             $validator = Validator::make($request->all(), [
                 'consultation_id' => 'required|exists:consultations,id',
                 'assigned_to_id' => 'required|exists:users,id',
-                'type' => 'required|string|max:255',
+                'description' => 'required|string|max:255',
                 'status' => 'required|in:Pending,Ongoing,Completed',
                 'instruction' => 'nullable|string',
                 'specialist_outcome' => 'nullable|string',
@@ -125,10 +127,12 @@ class MedicalServiceController extends Controller
                 'consultation_id' => $request->consultation_id,
                 'patient_id' => $consultation->patient_id,
                 'assigned_to_id' => $request->assigned_to_id,
-                'type' => $request->type,
+                'type' => $request->description, // Map description to type field in database
                 'status' => $request->status,
                 'instruction' => $request->instruction,
                 'specialist_outcome' => $request->specialist_outcome,
+                'description' => $request->description,
+                'remarks' => $request->remarks,
                 'receptionist_id' => auth()->id(), // Current user as receptionist
             ];
 
@@ -240,13 +244,11 @@ class MedicalServiceController extends Controller
             $validator = Validator::make($request->all(), [
                 'consultation_id' => 'sometimes|required|exists:consultations,id',
                 'assigned_to_id' => 'sometimes|required|exists:users,id',
-                'type' => 'sometimes|required|string|max:255',
+                'description' => 'sometimes|required|string|max:255',
                 'status' => 'sometimes|required|in:Pending,Ongoing,Completed',
                 'instruction' => 'nullable|string',
                 'specialist_outcome' => 'nullable|string',
-                'primary_stock_item_id' => 'nullable|exists:stock_items,id',
-                'stock_quantity_used' => 'nullable|numeric|min:0',
-                'stock_item_notes' => 'nullable|string',
+                'remarks' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -259,10 +261,14 @@ class MedicalServiceController extends Controller
 
             // Update the service
             $updateData = $request->only([
-                'consultation_id', 'assigned_to_id', 'type', 'status', 
-                'instruction', 'specialist_outcome', 'primary_stock_item_id',
-                'stock_quantity_used', 'stock_item_notes'
+                'consultation_id', 'assigned_to_id', 'status', 
+                'instruction', 'specialist_outcome', 'description', 'remarks'
             ]);
+
+            // Map description to type field for database consistency
+            if ($request->has('description')) {
+                $updateData['type'] = $request->description;
+            }
 
             $service->update(array_filter($updateData, function($value) {
                 return $value !== null;
@@ -286,6 +292,8 @@ class MedicalServiceController extends Controller
                     'status' => $service->status,
                     'instruction' => $service->instruction,
                     'specialist_outcome' => $service->specialist_outcome,
+                    'description' => $service->description,
+                    'remarks' => $service->remarks,
                     'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
                 ]
             ]);
@@ -472,6 +480,66 @@ class MedicalServiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving employees: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Get stock items for dropdown (for service types)
+     */
+    public function getStockItemsForDropdown(Request $request)
+    {
+        try {
+            $search = $request->get('q', '');
+            $limit = min(50, max(10, $request->get('limit', 20)));
+
+            $query = StockItem::query()
+                ->where('current_quantity', '>', 0) // Only items in stock
+                ->orderBy('name', 'asc');
+
+            // Apply search filter
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'LIKE', "%{$search}%")
+                      ->orWhere('description', 'LIKE', "%{$search}%")
+                      ->orWhere('category', 'LIKE', "%{$search}%");
+                });
+            }
+
+            $stockItems = $query->limit($limit)->get();
+
+            // Remove duplicates and format data
+            $data = $stockItems->unique('name')->map(function ($item) {
+                $displayText = $item->name;
+                if (!empty($item->category)) {
+                    $displayText .= " ({$item->category})";
+                }
+                if ($item->current_quantity > 0) {
+                    $displayText .= " - Stock: {$item->current_quantity}";
+                }
+
+                return [
+                    'id' => $item->id,
+                    'text' => $displayText,
+                    'name' => $item->name,
+                    'category' => $item->category,
+                    'description' => $item->description,
+                    'current_quantity' => $item->current_quantity,
+                    'unit_price' => $item->unit_price,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock items retrieved successfully',
+                'data' => $data->values()->all()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving stock items: ' . $e->getMessage(),
                 'data' => []
             ], 500);
         }
