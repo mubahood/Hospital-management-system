@@ -90,7 +90,7 @@ class MedicalServiceController extends Controller
     public function store(Request $request)
     {
         try {
-            // Validation rules - SIMPLIFIED to 4 fields only
+            // Validation rules - SIMPLIFIED to 4 fields + medical service items
             $validator = Validator::make($request->all(), [
                 'consultation_id' => 'required|exists:consultations,id',
                 'assigned_to_id' => [
@@ -108,6 +108,14 @@ class MedicalServiceController extends Controller
                 ],
                 'type' => 'required|string|max:255', // Service type (maps to both type and description)
                 'instruction' => 'nullable|string', // Special instructions
+                
+                // Medical service items validation
+                'medical_service_items' => 'nullable|array',
+                'medical_service_items.*.stock_item_id' => 'required|exists:stock_items,id',
+                'medical_service_items.*.quantity' => 'required|numeric|min:0.01',
+                'medical_service_items.*.description' => 'nullable|string',
+                'medical_service_items.*.file' => 'nullable|string',
+                'medical_service_items.*.remarks' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -123,6 +131,9 @@ class MedicalServiceController extends Controller
             if (!$consultation) {
                 return $this->error('Consultation not found');
             }
+
+            // Use DB transaction for atomicity
+            \DB::beginTransaction();
 
             // Create the medical service - SIMPLIFIED to 4 fields
             $serviceData = [
@@ -140,8 +151,53 @@ class MedicalServiceController extends Controller
 
             $service = MedicalService::create($serviceData);
 
+            // Create medical service items if provided
+            if ($request->has('medical_service_items') && is_array($request->medical_service_items)) {
+                foreach ($request->medical_service_items as $itemData) {
+                    // Get stock item to fetch current price
+                    $stockItem = \App\Models\StockItem::find($itemData['stock_item_id']);
+                    
+                    if ($stockItem) {
+                        $quantity = floatval($itemData['quantity']);
+                        $unitPrice = floatval($stockItem->current_price ?? 0);
+                        $totalPrice = $quantity * $unitPrice;
+
+                        \App\Models\MedicalServiceItem::create([
+                            'medical_service_id' => $service->id,
+                            'stock_item_id' => $itemData['stock_item_id'],
+                            'quantity' => $quantity,
+                            'unit_price' => $unitPrice,
+                            'total_price' => $totalPrice,
+                            'description' => $itemData['description'] ?? null,
+                            'file' => $itemData['file'] ?? null,
+                            'remarks' => $itemData['remarks'] ?? null,
+                        ]);
+                    }
+                }
+            }
+
+            \DB::commit();
+
             // Load relationships for response
-            $service->load(['consultation.patient', 'assigned_to']);
+            $service->load(['consultation.patient', 'assigned_to', 'medical_service_items.stock_item']);
+
+            // Transform medical service items
+            $items = $service->medical_service_items->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'stock_item_id' => $item->stock_item_id,
+                    'stock_item_name' => $item->stock_item?->name ?? 'N/A',
+                    'description' => $item->description,
+                    'file' => $item->file,
+                    'quantity' => floatval($item->quantity),
+                    'unit_price' => floatval($item->unit_price),
+                    'total_price' => floatval($item->total_price),
+                    'remarks' => $item->remarks,
+                    'measuring_unit' => $item->stock_item?->measuring_unit ?? '',
+                ];
+            });
+
+            $totalItemsCost = $items->sum('total_price');
 
             return $this->success([
                 'id' => $service->id,
@@ -155,10 +211,13 @@ class MedicalServiceController extends Controller
                 'status' => $service->status,
                 'instruction' => $service->instruction,
                 'specialist_outcome' => $service->specialist_outcome,
+                'medical_service_items' => $items,
+                'total_items_cost' => $totalItemsCost,
                 'created_at' => $service->created_at?->format('Y-m-d H:i:s'),
             ], 'Medical service created successfully');
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return $this->error('Error creating medical service: ' . $e->getMessage());
         }
     }
@@ -169,7 +228,12 @@ class MedicalServiceController extends Controller
     public function show($id)
     {
         try {
-            $service = MedicalService::with(['consultation.patient', 'assigned_to', 'receptionist'])->find($id);
+            $service = MedicalService::with([
+                'consultation.patient', 
+                'assigned_to', 
+                'receptionist',
+                'medical_service_items.stock_item'  // Load items with stock item details
+            ])->find($id);
 
             if (!$service) {
                 return $this->error('Medical service not found');
@@ -181,6 +245,26 @@ class MedicalServiceController extends Controller
             
             // Determine if current user is the creator
             $isCreator = $currentUserId && $creatorId && ($currentUserId == $creatorId);
+
+            // Transform medical service items
+            $items = $service->medical_service_items->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'stock_item_id' => $item->stock_item_id,
+                    'stock_item_name' => $item->stock_item?->name ?? 'N/A',
+                    'description' => $item->description,
+                    'file' => $item->file,
+                    'quantity' => $item->quantity ? floatval($item->quantity) : 0,
+                    'unit_price' => $item->unit_price ? floatval($item->unit_price) : 0,
+                    'total_price' => $item->total_price ? floatval($item->total_price) : 0,
+                    'remarks' => $item->remarks,
+                    'measuring_unit' => $item->stock_item?->measuring_unit ?? '',
+                    'created_at' => $item->created_at?->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            // Calculate total items cost
+            $totalItemsCost = $items->sum('total_price');
 
             return $this->success([
                     'id' => $service->id,
@@ -201,6 +285,8 @@ class MedicalServiceController extends Controller
                     'receptionist_name' => $service->receptionist?->name ?? null,
                     'is_creator' => $isCreator,
                     'can_edit_original_fields' => $isCreator,
+                    'medical_service_items' => $items,
+                    'total_items_cost' => $totalItemsCost,
                 'created_at' => $service->created_at?->format('Y-m-d H:i:s'),
                 'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
             ], 'Medical service retrieved successfully');
@@ -222,7 +308,7 @@ class MedicalServiceController extends Controller
                 return $this->error('Medical service not found');
             }
 
-            // Validation rules - SIMPLIFIED to 4 fields
+            // Validation rules - SIMPLIFIED to 4 fields + medical service items
             $validator = Validator::make($request->all(), [
                 'consultation_id' => 'sometimes|required|exists:consultations,id',
                 'assigned_to_id' => [
@@ -231,7 +317,7 @@ class MedicalServiceController extends Controller
                     function ($attribute, $value, $fail) {
                         if ($value !== null && $value !== '') {
                             // Check if user exists without global scopes
-                            $userExists = \DB::table('admin_users')->where('id', $value)->exists();
+                            $userExists = DB::table('admin_users')->where('id', $value)->exists();
                             if (!$userExists) {
                                 $fail('The selected assigned to id is invalid.');
                             }
@@ -242,13 +328,24 @@ class MedicalServiceController extends Controller
                 'instruction' => 'nullable|string',
                 'status' => 'nullable|in:Pending,Ongoing,Completed',
                 'specialist_outcome' => 'nullable|string',
+                
+                // Medical service items validation
+                'medical_service_items' => 'nullable|array',
+                'medical_service_items.*.id' => 'nullable|integer|exists:medical_service_items,id',
+                'medical_service_items.*.stock_item_id' => 'required|exists:stock_items,id',
+                'medical_service_items.*.quantity' => 'required|numeric|min:0.01',
+                'medical_service_items.*.description' => 'nullable|string',
+                'medical_service_items.*.file' => 'nullable|string',
+                'medical_service_items.*.remarks' => 'nullable|string',
+                'medical_service_items.*._destroy' => 'nullable|boolean',
             ]);
 
             if ($validator->fails()) {
                 return $this->error('Validation failed: ' . $validator->errors()->first());
             }
 
-            // Update the service - only accept simplified fields
+            // Use DB transaction for atomicity
+            DB::beginTransaction();
 
             // Update the service - only accept simplified fields
             $updateData = $request->only([
@@ -265,8 +362,75 @@ class MedicalServiceController extends Controller
                 return $value !== null;
             }));
 
+            // Handle medical service items CRUD if provided
+            if ($request->has('medical_service_items') && is_array($request->medical_service_items)) {
+                foreach ($request->medical_service_items as $itemData) {
+                    // Check if item should be deleted
+                    if (isset($itemData['_destroy']) && $itemData['_destroy'] === true) {
+                        if (isset($itemData['id'])) {
+                            \App\Models\MedicalServiceItem::where('id', $itemData['id'])
+                                ->where('medical_service_id', $service->id)
+                                ->delete();
+                        }
+                        continue;
+                    }
+
+                    // Get stock item to fetch current price
+                    $stockItem = \App\Models\StockItem::find($itemData['stock_item_id']);
+                    
+                    if ($stockItem) {
+                        $quantity = floatval($itemData['quantity']);
+                        $unitPrice = floatval($stockItem->current_price ?? 0);
+                        $totalPrice = $quantity * $unitPrice;
+
+                        $itemUpdateData = [
+                            'stock_item_id' => $itemData['stock_item_id'],
+                            'quantity' => $quantity,
+                            'unit_price' => $unitPrice,
+                            'total_price' => $totalPrice,
+                            'description' => $itemData['description'] ?? null,
+                            'file' => $itemData['file'] ?? null,
+                            'remarks' => $itemData['remarks'] ?? null,
+                        ];
+
+                        // Update existing item or create new item
+                        if (isset($itemData['id']) && $itemData['id']) {
+                            // Update existing item
+                            \App\Models\MedicalServiceItem::where('id', $itemData['id'])
+                                ->where('medical_service_id', $service->id)
+                                ->update($itemUpdateData);
+                        } else {
+                            // Create new item
+                            \App\Models\MedicalServiceItem::create(array_merge($itemUpdateData, [
+                                'medical_service_id' => $service->id,
+                            ]));
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+
             // Load relationships for response
-            $service->load(['consultation.patient', 'assigned_to']);
+            $service->load(['consultation.patient', 'assigned_to', 'medical_service_items.stock_item']);
+
+            // Transform medical service items
+            $items = $service->medical_service_items->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'stock_item_id' => $item->stock_item_id,
+                    'stock_item_name' => $item->stock_item?->name ?? 'N/A',
+                    'description' => $item->description,
+                    'file' => $item->file,
+                    'quantity' => floatval($item->quantity),
+                    'unit_price' => floatval($item->unit_price),
+                    'total_price' => floatval($item->total_price),
+                    'remarks' => $item->remarks,
+                    'measuring_unit' => $item->stock_item?->measuring_unit ?? '',
+                ];
+            });
+
+            $totalItemsCost = $items->sum('total_price');
 
             return $this->success([
                 'id' => $service->id,
@@ -280,12 +444,15 @@ class MedicalServiceController extends Controller
                 'status' => $service->status,
                 'instruction' => $service->instruction,
                 'specialist_outcome' => $service->specialist_outcome,
+                'medical_service_items' => $items,
+                'total_items_cost' => $totalItemsCost,
                 'description' => $service->description,
                 'remarks' => $service->remarks,
                 'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
             ], 'Medical service updated successfully');
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return $this->error('Error updating medical service: ' . $e->getMessage());
         }
     }

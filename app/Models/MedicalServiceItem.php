@@ -29,4 +29,10 @@ class MedicalServiceItem extends Model
     {
         return $this->belongsTo(MedicalService::class);
     }
+
+    //belongs to StockItem
+    public function stock_item()
+    {
+        return $this->belongsTo(StockItem::class, 'stock_item_id');
+    }
 }
