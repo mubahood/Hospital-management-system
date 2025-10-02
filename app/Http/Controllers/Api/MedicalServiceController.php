@@ -7,11 +7,15 @@ use App\Models\MedicalService;
 use App\Models\Consultation;
 use App\Models\User;
 use App\Models\StockItem;
+use App\Traits\ApiResponser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class MedicalServiceController extends Controller
 {
+    use ApiResponser;
+
     /**
      * Display a listing of medical services
      */
@@ -65,24 +69,18 @@ class MedicalServiceController extends Controller
                 ];
             });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Medical services retrieved successfully',
-                'data' => $services->items(),
+            return $this->success([
+                'items' => $services->items(),
                 'pagination' => [
                     'current_page' => $services->currentPage(),
                     'last_page' => $services->lastPage(),
                     'per_page' => $services->perPage(),
                     'total' => $services->total(),
                 ],
-            ]);
+            ], 'Medical services retrieved successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving medical services: ' . $e->getMessage(),
-                'data' => []
-            ], 500);
+            return $this->error('Error retrieving medical services: ' . $e->getMessage());
         }
     }
 
@@ -92,17 +90,24 @@ class MedicalServiceController extends Controller
     public function store(Request $request)
     {
         try {
-            // Validation rules
+            // Validation rules - SIMPLIFIED to 4 fields only
             $validator = Validator::make($request->all(), [
                 'consultation_id' => 'required|exists:consultations,id',
-                'assigned_to_id' => 'required|exists:users,id',
-                'description' => 'required|string|max:255',
-                'status' => 'required|in:Pending,Ongoing,Completed',
-                'instruction' => 'nullable|string',
-                'specialist_outcome' => 'nullable|string',
-                'primary_stock_item_id' => 'nullable|exists:stock_items,id',
-                'stock_quantity_used' => 'nullable|numeric|min:0',
-                'stock_item_notes' => 'nullable|string',
+                'assigned_to_id' => [
+                    'nullable',
+                    'integer',
+                    function ($attribute, $value, $fail) {
+                        if ($value !== null && $value !== '') {
+                            // Check if user exists without global scopes
+                            $userExists = \DB::table('admin_users')->where('id', $value)->exists();
+                            if (!$userExists) {
+                                $fail('The selected assigned to id is invalid.');
+                            }
+                        }
+                    },
+                ],
+                'type' => 'required|string|max:255', // Service type (maps to both type and description)
+                'instruction' => 'nullable|string', // Special instructions
             ]);
 
             if ($validator->fails()) {
@@ -116,66 +121,45 @@ class MedicalServiceController extends Controller
             // Get consultation details to populate patient_id and other fields
             $consultation = Consultation::find($request->consultation_id);
             if (!$consultation) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Consultation not found'
-                ], 404);
+                return $this->error('Consultation not found');
             }
 
-            // Create the medical service
+            // Create the medical service - SIMPLIFIED to 4 fields
             $serviceData = [
                 'consultation_id' => $request->consultation_id,
                 'patient_id' => $consultation->patient_id,
-                'assigned_to_id' => $request->assigned_to_id,
-                'type' => $request->description, // Map description to type field in database
-                'status' => $request->status,
+                'assigned_to_id' => $request->assigned_to_id ?? null, // Optional
+                'type' => $request->type, // Service type from form
+                'status' => $request->status ?? 'Pending', // Default to Pending
                 'instruction' => $request->instruction,
-                'specialist_outcome' => $request->specialist_outcome,
-                'description' => $request->description,
-                'remarks' => $request->remarks,
-                'receptionist_id' => auth()->id(), // Current user as receptionist
+                'description' => $request->type, // Map type to description for compatibility
+                'receptionist_id' => auth()->id(), // Current user creating the service
+                'specialist_outcome' => '', // Empty initially
+                'remarks' => '', // Empty initially
             ];
 
             $service = MedicalService::create($serviceData);
 
-            // Handle stock item usage if provided
-            if ($request->primary_stock_item_id && $request->stock_quantity_used) {
-                // You may want to create a separate model for stock usage tracking
-                // For now, we'll store it as part of the service record
-                $service->update([
-                    'primary_stock_item_id' => $request->primary_stock_item_id,
-                    'stock_quantity_used' => $request->stock_quantity_used,
-                    'stock_item_notes' => $request->stock_item_notes,
-                ]);
-            }
-
             // Load relationships for response
             $service->load(['consultation.patient', 'assigned_to']);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Medical service created successfully',
-                'data' => [
-                    'id' => $service->id,
-                    'consultation_id' => $service->consultation_id,
-                    'consultation_number' => $service->consultation?->consultation_number,
-                    'patient_id' => $service->patient_id,
-                    'patient_name' => $service->consultation?->patient?->name,
-                    'assigned_to_id' => $service->assigned_to_id,
-                    'specialist_name' => $service->assigned_to?->name,
-                    'type' => $service->type,
-                    'status' => $service->status,
-                    'instruction' => $service->instruction,
-                    'specialist_outcome' => $service->specialist_outcome,
-                    'created_at' => $service->created_at?->format('Y-m-d H:i:s'),
-                ]
-            ], 201);
+            return $this->success([
+                'id' => $service->id,
+                'consultation_id' => $service->consultation_id,
+                'consultation_number' => $service->consultation?->consultation_number,
+                'patient_id' => $service->patient_id,
+                'patient_name' => $service->consultation?->patient?->name,
+                'assigned_to_id' => $service->assigned_to_id,
+                'specialist_name' => $service->assigned_to?->name,
+                'type' => $service->type,
+                'status' => $service->status,
+                'instruction' => $service->instruction,
+                'specialist_outcome' => $service->specialist_outcome,
+                'created_at' => $service->created_at?->format('Y-m-d H:i:s'),
+            ], 'Medical service created successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error creating medical service: ' . $e->getMessage()
-            ], 500);
+            return $this->error('Error creating medical service: ' . $e->getMessage());
         }
     }
 
@@ -185,19 +169,20 @@ class MedicalServiceController extends Controller
     public function show($id)
     {
         try {
-            $service = MedicalService::with(['consultation.patient', 'assigned_to'])->find($id);
+            $service = MedicalService::with(['consultation.patient', 'assigned_to', 'receptionist'])->find($id);
 
             if (!$service) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Medical service not found'
-                ], 404);
+                return $this->error('Medical service not found');
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Medical service retrieved successfully',
-                'data' => [
+            // Get current authenticated user
+            $currentUserId = auth()->user()->id ?? null;
+            $creatorId = $service->receptionist_id ?? null;
+            
+            // Determine if current user is the creator
+            $isCreator = $currentUserId && $creatorId && ($currentUserId == $creatorId);
+
+            return $this->success([
                     'id' => $service->id,
                     'consultation_id' => $service->consultation_id,
                     'consultation_number' => $service->consultation?->consultation_number,
@@ -212,16 +197,16 @@ class MedicalServiceController extends Controller
                     'primary_stock_item_id' => $service->primary_stock_item_id ?? null,
                     'stock_quantity_used' => $service->stock_quantity_used ?? null,
                     'stock_item_notes' => $service->stock_item_notes ?? null,
-                    'created_at' => $service->created_at?->format('Y-m-d H:i:s'),
-                    'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
-                ]
-            ]);
+                    'receptionist_id' => $service->receptionist_id,
+                    'receptionist_name' => $service->receptionist?->name ?? null,
+                    'is_creator' => $isCreator,
+                    'can_edit_original_fields' => $isCreator,
+                'created_at' => $service->created_at?->format('Y-m-d H:i:s'),
+                'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
+            ], 'Medical service retrieved successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving medical service: ' . $e->getMessage()
-            ], 500);
+            return $this->error('Error retrieving medical service: ' . $e->getMessage());
         }
     }
 
@@ -234,40 +219,46 @@ class MedicalServiceController extends Controller
             $service = MedicalService::find($id);
 
             if (!$service) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Medical service not found'
-                ], 404);
+                return $this->error('Medical service not found');
             }
 
-            // Validation rules
+            // Validation rules - SIMPLIFIED to 4 fields
             $validator = Validator::make($request->all(), [
                 'consultation_id' => 'sometimes|required|exists:consultations,id',
-                'assigned_to_id' => 'sometimes|required|exists:users,id',
-                'description' => 'sometimes|required|string|max:255',
-                'status' => 'sometimes|required|in:Pending,Ongoing,Completed',
+                'assigned_to_id' => [
+                    'nullable',
+                    'integer',
+                    function ($attribute, $value, $fail) {
+                        if ($value !== null && $value !== '') {
+                            // Check if user exists without global scopes
+                            $userExists = \DB::table('admin_users')->where('id', $value)->exists();
+                            if (!$userExists) {
+                                $fail('The selected assigned to id is invalid.');
+                            }
+                        }
+                    },
+                ],
+                'type' => 'sometimes|required|string|max:255',
                 'instruction' => 'nullable|string',
+                'status' => 'nullable|in:Pending,Ongoing,Completed',
                 'specialist_outcome' => 'nullable|string',
-                'remarks' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
+                return $this->error('Validation failed: ' . $validator->errors()->first());
             }
 
-            // Update the service
+            // Update the service - only accept simplified fields
+
+            // Update the service - only accept simplified fields
             $updateData = $request->only([
-                'consultation_id', 'assigned_to_id', 'status', 
-                'instruction', 'specialist_outcome', 'description', 'remarks'
+                'consultation_id', 'assigned_to_id', 'type', 'instruction', 
+                'status', 'specialist_outcome'
             ]);
 
-            // Map description to type field for database consistency
-            if ($request->has('description')) {
-                $updateData['type'] = $request->description;
+            // Map type to description field for database compatibility
+            if ($request->has('type')) {
+                $updateData['description'] = $request->type;
             }
 
             $service->update(array_filter($updateData, function($value) {
@@ -277,32 +268,25 @@ class MedicalServiceController extends Controller
             // Load relationships for response
             $service->load(['consultation.patient', 'assigned_to']);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Medical service updated successfully',
-                'data' => [
-                    'id' => $service->id,
-                    'consultation_id' => $service->consultation_id,
-                    'consultation_number' => $service->consultation?->consultation_number,
-                    'patient_id' => $service->patient_id,
-                    'patient_name' => $service->consultation?->patient?->name,
-                    'assigned_to_id' => $service->assigned_to_id,
-                    'specialist_name' => $service->assigned_to?->name,
-                    'type' => $service->type,
-                    'status' => $service->status,
-                    'instruction' => $service->instruction,
-                    'specialist_outcome' => $service->specialist_outcome,
-                    'description' => $service->description,
-                    'remarks' => $service->remarks,
-                    'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
-                ]
-            ]);
+            return $this->success([
+                'id' => $service->id,
+                'consultation_id' => $service->consultation_id,
+                'consultation_number' => $service->consultation?->consultation_number,
+                'patient_id' => $service->patient_id,
+                'patient_name' => $service->consultation?->patient?->name,
+                'assigned_to_id' => $service->assigned_to_id,
+                'specialist_name' => $service->assigned_to?->name,
+                'type' => $service->type,
+                'status' => $service->status,
+                'instruction' => $service->instruction,
+                'specialist_outcome' => $service->specialist_outcome,
+                'description' => $service->description,
+                'remarks' => $service->remarks,
+                'updated_at' => $service->updated_at?->format('Y-m-d H:i:s'),
+            ], 'Medical service updated successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating medical service: ' . $e->getMessage()
-            ], 500);
+            return $this->error('Error updating medical service: ' . $e->getMessage());
         }
     }
 
@@ -315,24 +299,15 @@ class MedicalServiceController extends Controller
             $service = MedicalService::find($id);
 
             if (!$service) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Medical service not found'
-                ], 404);
+                return $this->error('Medical service not found');
             }
 
             $service->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Medical service deleted successfully'
-            ]);
+            return $this->success([], 'Medical service deleted successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting medical service: ' . $e->getMessage()
-            ], 500);
+            return $this->error('Error deleting medical service: ' . $e->getMessage());
         }
     }
 
@@ -397,18 +372,10 @@ class MedicalServiceController extends Controller
                 ];
             });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Consultations retrieved successfully',
-                'data' => $data->values()->all()
-            ]);
+            return $this->success($data->values()->all(), 'Consultations retrieved successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving consultations: ' . $e->getMessage(),
-                'data' => []
-            ], 500);
+            return $this->error('Error retrieving consultations: ' . $e->getMessage());
         }
     }
 
@@ -419,18 +386,24 @@ class MedicalServiceController extends Controller
     {
         try {
             $searchQuery = $request->get('q', '');
+            $employeeId = $request->get('employee_id', null);
             $limit = min(50, max(1, $request->get('limit', 20)));
-            $userType = $request->get('user_type', 'Doctor'); // Default to doctors
+            $userType = $request->get('user_type', 'employee'); // Default to employees (lowercase)
 
-            // Build query for employees/doctors
-            $query = User::where('user_type', $userType)
-                ->where('status', 'Active')
+            // Build query for employees/doctors - CASE INSENSITIVE
+            // Status: 1 = Active, 0 = Inactive
+            $query = User::whereRaw('LOWER(user_type) = ?', [strtolower($userType)])
+                ->where('status', 1) // Active users only (numeric status)
                 ->distinct() // Ensure unique results
                 ->orderBy('first_name', 'asc')
                 ->orderBy('last_name', 'asc');
 
+            // If specific employee ID is provided, fetch only that employee
+            if (!empty($employeeId)) {
+                $query->where('id', $employeeId);
+            }
             // Apply search if provided
-            if (!empty($searchQuery)) {
+            else if (!empty($searchQuery)) {
                 $query->where(function($q) use ($searchQuery) {
                     $q->where('first_name', 'LIKE', "%{$searchQuery}%")
                       ->orWhere('last_name', 'LIKE', "%{$searchQuery}%")
@@ -470,18 +443,10 @@ class MedicalServiceController extends Controller
                 ];
             });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Employees retrieved successfully',
-                'data' => $data->values()->all()
-            ]);
+            return $this->success($data->values()->all(), 'Employees retrieved successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving employees: ' . $e->getMessage(),
-                'data' => []
-            ], 500);
+            return $this->error('Error retrieving employees: ' . $e->getMessage());
         }
     }
 
@@ -530,18 +495,10 @@ class MedicalServiceController extends Controller
                 ];
             });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Stock items retrieved successfully',
-                'data' => $data->values()->all()
-            ]);
+            return $this->success($data->values()->all(), 'Stock items retrieved successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving stock items: ' . $e->getMessage(),
-                'data' => []
-            ], 500);
+            return $this->error('Error retrieving stock items: ' . $e->getMessage());
         }
     }
 }

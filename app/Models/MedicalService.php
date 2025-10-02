@@ -53,6 +53,12 @@ class MedicalService extends Model
         return $this->belongsTo(User::class, 'assigned_to_id');
     }
 
+    //receptionist (creator of the medical service)
+    public function receptionist()
+    {
+        return $this->belongsTo(User::class, 'receptionist_id');
+    }
+
     //items text
     public function items_text()
     {
