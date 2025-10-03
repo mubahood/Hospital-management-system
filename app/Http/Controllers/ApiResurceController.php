@@ -468,6 +468,75 @@ class ApiResurceController extends Controller
                 $validData['user_id'] = $u->id;
             }
 
+            // Special handling for Consultation model with new patient
+            if ($model === 'Consultation' && isset($validData['is_new_patient'])) {
+                \Log::info('🔵 ApiResurceController - Processing Consultation with new patient flag', [
+                    'is_new_patient_raw' => $validData['is_new_patient'],
+                    'new_patient_first_name' => $validData['new_patient_first_name'] ?? 'not set',
+                    'new_patient_last_name' => $validData['new_patient_last_name'] ?? 'not set',
+                    'patient_id' => $validData['patient_id'] ?? 'not set',
+                    'logged_user_id' => $u->id,
+                    'logged_user_enterprise_id' => $u->enterprise_id ?? 'not set'
+                ]);
+                
+                // Convert string boolean to actual boolean
+                if ($validData['is_new_patient'] === 'true' || $validData['is_new_patient'] === '1' || $validData['is_new_patient'] === 1) {
+                    $validData['is_new_patient'] = true;
+                    \Log::info('✅ Converted is_new_patient to TRUE');
+                } elseif ($validData['is_new_patient'] === 'false' || $validData['is_new_patient'] === '0' || $validData['is_new_patient'] === 0) {
+                    $validData['is_new_patient'] = false;
+                    \Log::info('✅ Converted is_new_patient to FALSE');
+                }
+
+                // Normalize empty string patient_id to null
+                if (isset($validData['patient_id']) && $validData['patient_id'] === '') {
+                    $validData['patient_id'] = null;
+                    \Log::info('🔵 Normalized empty string patient_id to null');
+                }
+
+                // Validate new patient fields if is_new_patient is true
+                if ($validData['is_new_patient'] === true) {
+                    \Log::info('🟢 Validating new patient fields');
+                    
+                    $requiredNewPatientFields = ['new_patient_first_name', 'new_patient_last_name'];
+                    $missingFields = [];
+                    
+                    foreach ($requiredNewPatientFields as $field) {
+                        if (empty($validData[$field])) {
+                            $missingFields[] = $field;
+                        }
+                    }
+                    
+                    // Check if at least phone or email is provided
+                    if (empty($validData['new_patient_phone']) && empty($validData['new_patient_email'])) {
+                        $missingFields[] = 'new_patient_phone or new_patient_email';
+                    }
+                    
+                    if (!empty($missingFields)) {
+                        \Log::error('❌ Missing required new patient fields', ['missing' => $missingFields]);
+                        return $this->error(
+                            'Missing required fields for new patient: ' . implode(', ', $missingFields),
+                            422
+                        );
+                    }
+                    
+                    \Log::info('✅ New patient validation passed');
+                    
+                    // Ensure patient_id is null for new patients (will be set after patient creation)
+                    $validData['patient_id'] = null;
+                } else {
+                    // For existing patients, ensure patient_id is provided and not empty
+                    \Log::info('🔵 Existing patient - validating patient_id');
+                    
+                    if (empty($validData['patient_id']) || $validData['patient_id'] === null) {
+                        \Log::error('❌ patient_id missing for existing patient consultation');
+                        return $this->error('Patient selection is required for existing patient consultations.', 422);
+                    }
+                    
+                    \Log::info('✅ Existing patient validation passed', ['patient_id' => $validData['patient_id']]);
+                }
+            }
+
             // Perform validation if requested
             if ($r->get('validate', true)) {
                 $validator = $this->validateModelData($validData, $model, $isUpdate, $obj);
@@ -491,7 +560,13 @@ class ApiResurceController extends Controller
                 // Handle file uploads if any
                 $this->handleFileUploads($r, $obj);
 
-                // Refresh model to get updated data
+                // Handle medical_services array for Consultation model
+                if ($model === 'Consultation' && $r->has('medical_services') && is_array($r->get('medical_services'))) {
+                    $this->handleMedicalServices($obj, $r->get('medical_services'), $u);
+                }
+
+                // Refresh model to get updated data (with relationships)
+                $obj->load('medical_services'); // Load medical services relationship if exists
                 $obj->refresh();
 
                 DB::commit();
@@ -534,6 +609,14 @@ class ApiResurceController extends Controller
      */
     private function applyFilters($query, Request $r, array $columns)
     {
+        // List of parameters to exclude from direct column filtering
+        $excludedParams = [
+            'page', 'per_page', 'search', 'search_by', 'sort_by', 'sort_order', 'sort_direction',
+            'with', 'fields', 'select', 'date_from', 'date_to', 'export', 'user_scope',
+            'bulk_action', 'bulk_ids', 'validate', 'return_model', 'id', 'online_id',
+            'filters', 'model', 'token', 'api_token'
+        ];
+
         // Handle JSON filters parameter
         if ($r->has('filters') && !empty($r->get('filters'))) {
             $filters = json_decode($r->get('filters'), true);
@@ -563,6 +646,27 @@ class ApiResurceController extends Controller
                 if (in_array($column, $columns)) {
                     $query->where($column, $value);
                 }
+            }
+        }
+
+        // NEW: Handle direct column name parameters (e.g., main_status, payment_status)
+        // This allows frontend to send filters directly as column names
+        foreach ($r->all() as $key => $value) {
+            // Skip if it's an excluded parameter or already processed
+            if (in_array($key, $excludedParams) || 
+                strpos($key, 'filter_') === 0 || 
+                strpos($key, 'q_') === 0) {
+                continue;
+            }
+
+            // Check if this parameter matches a database column
+            if (in_array($key, $columns) && $value !== null && $value !== '') {
+                Log::info("🔵 Applying direct column filter", [
+                    'column' => $key,
+                    'value' => $value,
+                    'type' => gettype($value)
+                ]);
+                $this->applyFilter($query, $key, $value);
             }
         }
     }
@@ -1015,5 +1119,81 @@ class ApiResurceController extends Controller
         }
         
         return $value;
+    }
+
+    /**
+     * Handle medical services array for Consultation model
+     * This method creates/updates/deletes medical services based on the array provided
+     * 
+     * @param object $consultation - Consultation model instance
+     * @param array $medicalServicesData - Array of medical service data
+     * @param object $user - Authenticated user
+     */
+    private function handleMedicalServices($consultation, $medicalServicesData, $user)
+    {
+        try {
+            // Get MedicalService model
+            $medicalServiceClass = "App\\Models\\MedicalService";
+            if (!class_exists($medicalServiceClass)) {
+                Log::warning("MedicalService model not found. Skipping medical services sync.");
+                return;
+            }
+
+            // Get existing medical service IDs for this consultation
+            $existingServiceIds = $consultation->medical_services()->pluck('id')->toArray();
+            $providedServiceIds = [];
+
+            // Process each medical service in the array
+            foreach ($medicalServicesData as $serviceData) {
+                // Skip if no type specified
+                if (empty($serviceData['type'])) {
+                    continue;
+                }
+
+                $serviceId = $serviceData['id'] ?? null;
+                $providedServiceIds[] = $serviceId;
+
+                if ($serviceId && in_array($serviceId, $existingServiceIds)) {
+                    // Update existing service
+                    $service = $medicalServiceClass::find($serviceId);
+                    if ($service && $service->consultation_id == $consultation->id) {
+                        $service->type = $serviceData['type'];
+                        $service->assigned_to_id = $serviceData['assigned_to_id'] ?? null;
+                        $service->instruction = $serviceData['instruction'] ?? '';
+                        $service->status = $serviceData['status'] ?? 'Pending';
+                        $service->save();
+                    }
+                } else {
+                    // Create new service
+                    $newService = new $medicalServiceClass();
+                    $newService->consultation_id = $consultation->id;
+                    $newService->patient_id = $consultation->patient_id;
+                    $newService->enterprise_id = $user->enterprise_id;
+                    $newService->receptionist_id = $user->id;
+                    $newService->type = $serviceData['type'];
+                    $newService->assigned_to_id = $serviceData['assigned_to_id'] ?? null;
+                    $newService->instruction = $serviceData['instruction'] ?? '';
+                    $newService->status = $serviceData['status'] ?? 'Pending';
+                    $newService->save();
+                }
+            }
+
+            // Delete services that were removed from the array
+            $servicesToDelete = array_diff($existingServiceIds, array_filter($providedServiceIds));
+            if (!empty($servicesToDelete)) {
+                $medicalServiceClass::whereIn('id', $servicesToDelete)
+                    ->where('consultation_id', $consultation->id)
+                    ->delete();
+            }
+
+            Log::info("Medical services synced successfully for consultation ID: {$consultation->id}");
+
+        } catch (Exception $e) {
+            Log::error("Error handling medical services: " . $e->getMessage(), [
+                'consultation_id' => $consultation->id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Don't throw - let the consultation save succeed even if medical services fail
+        }
     }
 }

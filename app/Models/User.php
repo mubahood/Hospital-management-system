@@ -25,6 +25,11 @@ class User extends Authenticatable implements JWTSubject
         parent::boot();
 
         self::creating(function ($m) {
+            // Auto-set enterprise_id from authenticated user if not already set
+            $loggedUser = \Illuminate\Support\Facades\Auth::user();
+            if ($loggedUser && isset($loggedUser->enterprise_id) && empty($m->enterprise_id)) {
+                $m->enterprise_id = $loggedUser->enterprise_id;
+            }
 
             $m->email = trim($m->email);
             if ($m->email != null && strlen($m->email) > 3) {

@@ -44,6 +44,189 @@ Route::middleware([JwtMiddleware::class])->group(function () {
     Route::get('ajax/employees', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getEmployeesForDropdown']);
     Route::get('ajax/stock-items', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getStockItemsForDropdown']);
 
+    /**
+     * Dynamic AJAX Provider for Dropdowns
+     * 
+     * This endpoint provides a secure, flexible way to fetch data for dynamic dropdowns
+     * with search capabilities, filtering, and customizable formatting.
+     * 
+     * Query Parameters:
+     * - model: The model name (required)
+     * - q: Search query string
+     * - search_by_1: Primary search field (default: 'name')
+     * - search_by_2: Secondary search field (optional)
+     * - display_format: How to format the display text
+     * - limit: Number of results (max 50, default 20)
+     * - query_*: Filter conditions (e.g., query_status=active)
+     */
+    Route::get('ajax', function (Request $request) {
+        try {
+            // Define allowed models for security
+            $allowedModels = [
+                'Patient', // Special case - handled as User with user_type = 'Patient'
+                'Employee', 
+                'User',
+                'Doctor', // Special case - handled as User with user_type = 'Doctor'
+                'Department',
+                'Service',
+                'Room',
+                'Appointment',
+                'Consultation',
+                'Medicine',
+                'Supplier',
+                'Equipment',
+                'Ward',
+                'Bed',
+                'StockItem'
+            ];
+
+            // Get and validate model parameter
+            $modelName = trim($request->get('model', ''));
+            if (empty($modelName) || !in_array($modelName, $allowedModels)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid or missing model parameter',
+                    'data' => []
+                ], 400);
+            }
+
+            // Handle special cases for Patient, Doctor, and Employee
+            $actualModelName = $modelName;
+            $extraConditions = [];
+            
+            if ($modelName === 'Patient') {
+                $actualModelName = 'User';
+                $extraConditions['user_type'] = 'Patient';
+            } elseif ($modelName === 'Doctor') {
+                $actualModelName = 'User';
+                $extraConditions['user_type'] = 'Doctor';
+            } elseif ($modelName === 'Employee') {
+                $actualModelName = 'User';
+                // Get all users (employees) for the enterprise, no user_type filter
+                // The enterprise_id will be automatically filtered by the logged-in user's context
+            }
+
+            // Build the full model class name
+            $modelClass = "App\\Models\\{$actualModelName}";
+            
+            // Check if model class exists
+            if (!class_exists($modelClass)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Model not found',
+                    'data' => []
+                ], 404);
+            }
+
+            // Get search parameters
+            $searchQuery = trim($request->get('q', ''));
+            $searchBy1 = trim($request->get('search_by_1', 'first_name'));
+            $searchBy2 = trim($request->get('search_by_2', 'last_name'));
+            $displayFormat = trim($request->get('display_format', 'full_name'));
+            $limit = min(100, max(1, intval($request->get('limit', 100)))); // Max 100, min 1
+
+            // Extract filter conditions from query_* parameters
+            $conditions = [];
+            foreach ($request->all() as $key => $value) {
+                if (strpos($key, 'query_') === 0) {
+                    $fieldName = str_replace('query_', '', $key);
+                    // Sanitize field name to prevent injection
+                    if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $fieldName)) {
+                        // Skip 'role' field as it doesn't exist in User model
+                        if ($fieldName !== 'role') {
+                            $conditions[$fieldName] = $value;
+                        }
+                    }
+                }
+            }
+
+            // Build the base query
+            $query = $modelClass::query();
+
+            // Add enterprise filtering for User-based models (automatic security)
+            if ($actualModelName === 'User') {
+                $user = auth()->user();
+                if ($user && isset($user->enterprise_id)) {
+                    $query->where('enterprise_id', $user->enterprise_id);
+                }
+            }
+
+            // Apply special model conditions (like user_type for Patient/Doctor)
+            foreach ($extraConditions as $field => $value) {
+                $query->where($field, $value);
+            }
+
+            // Apply filter conditions from query_* parameters
+            foreach ($conditions as $field => $value) {
+                if (is_array($value)) {
+                    $query->whereIn($field, $value);
+                } else {
+                    $query->where($field, $value);
+                }
+            }
+
+            $data = [];
+
+            // Primary search
+            if (!empty($searchQuery)) {
+                $primaryQuery = clone $query;
+                $primaryResults = $primaryQuery
+                    ->where($searchBy1, 'LIKE', "%{$searchQuery}%")
+                    ->limit($limit)
+                    ->get();
+
+                // Secondary search if needed and specified
+                $secondaryResults = collect();
+                if ($primaryResults->count() < $limit && !empty($searchBy2)) {
+                    $secondaryQuery = clone $query;
+                    $secondaryResults = $secondaryQuery
+                        ->where($searchBy2, 'LIKE', "%{$searchQuery}%")
+                        ->whereNotIn('id', $primaryResults->pluck('id')->toArray())
+                        ->limit($limit - $primaryResults->count())
+                        ->get();
+                }
+
+                $allResults = $primaryResults->merge($secondaryResults);
+            } else {
+                // No search query, just return filtered results
+                $allResults = $query->limit($limit)->get();
+            }
+
+            // Format the results based on display_format
+            foreach ($allResults as $item) {
+                $formattedItem = formatDropdownItem($item, $displayFormat);
+                if ($formattedItem) {
+                    $data[] = $formattedItem;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+                'meta' => [
+                    'total' => count($data),
+                    'limit' => $limit,
+                    'model' => $modelName,
+                    'search_query' => $searchQuery,
+                    'filters_applied' => count($conditions)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('AJAX Dropdown Error: ' . $e->getMessage(), [
+                'model' => $request->get('model'),
+                'query' => $request->get('q'),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while fetching data',
+                'data' => []
+            ], 500);
+        }
+    })->name('ajax.dropdown');
+
     // Dynamic API routes - support both create and update operations
     Route::get('api/{model}', [ApiResurceController::class, 'index']);
     Route::get('api/{model}/{id}', [ApiResurceController::class, 'show']);
@@ -66,266 +249,96 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 /**
- * Dynamic AJAX Provider for Dropdowns
- * 
- * This endpoint provides a secure, flexible way to fetch data for dynamic dropdowns
- * with search capabilities, filtering, and customizable formatting.
- * 
- * Query Parameters:
- * - model: The model name (required)
- * - q: Search query string
- * - search_by_1: Primary search field (default: 'name')
- * - search_by_2: Secondary search field (optional)
- * - display_format: How to format the display text
- * - limit: Number of results (max 50, default 20)
- * - query_*: Filter conditions (e.g., query_status=active)
- * 
- * Security Features:
- * - Whitelist of allowed models
- * - Input sanitization
- * - Rate limiting ready
- * - SQL injection protection
- */
-Route::get('ajax', function (Request $request) {
-    try {
-        // Define allowed models for security
-        $allowedModels = [
-            'Patient', // Special case - handled as User with user_type = 'Patient'
-            'Employee', 
-            'User',
-            'Doctor', // Special case - handled as User with user_type = 'Doctor'
-            'Department',
-            'Service',
-            'Room',
-            'Appointment',
-            'Consultation',
-            'Medicine',
-            'Supplier',
-            'Equipment',
-            'Ward',
-            'Bed',
-            'StockItem'
-        ];
-
-        // Get and validate model parameter
-        $modelName = trim($request->get('model', ''));
-        if (empty($modelName) || !in_array($modelName, $allowedModels)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid or missing model parameter',
-                'data' => []
-            ], 400);
-        }
-
-        // Handle special cases for Patient and Doctor
-        $actualModelName = $modelName;
-        $extraConditions = [];
-        
-        if ($modelName === 'Patient') {
-            $actualModelName = 'User';
-            $extraConditions['user_type'] = 'Patient';
-        } elseif ($modelName === 'Doctor') {
-            $actualModelName = 'User';
-            $extraConditions['user_type'] = 'Doctor';
-        }
-
-        // Build the full model class name
-        $modelClass = "App\\Models\\{$actualModelName}";
-        
-        // Check if model class exists
-        if (!class_exists($modelClass)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Model not found',
-                'data' => []
-            ], 404);
-        }
-
-        // Get search parameters
-        $searchQuery = trim($request->get('q', ''));
-        $searchBy1 = trim($request->get('search_by_1', 'name'));
-        $searchBy2 = trim($request->get('search_by_2', ''));
-        $displayFormat = trim($request->get('display_format', 'id_name'));
-        $limit = min(50, max(1, intval($request->get('limit', 20)))); // Max 50, min 1
-
-        // Extract filter conditions from query_* parameters
-        $conditions = [];
-        foreach ($request->all() as $key => $value) {
-            if (strpos($key, 'query_') === 0) {
-                $fieldName = str_replace('query_', '', $key);
-                // Sanitize field name to prevent injection
-                if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $fieldName)) {
-                    $conditions[$fieldName] = $value;
-                }
-            }
-        }
-
-        // Build the base query
-        $query = $modelClass::query();
-
-        // Apply special model conditions first (like user_type for Patient/Doctor)
-        foreach ($extraConditions as $field => $value) {
-            $query->where($field, $value);
-        }
-
-        // Apply filter conditions from query_* parameters
-        foreach ($conditions as $field => $value) {
-            if (is_array($value)) {
-                $query->whereIn($field, $value);
-            } else {
-                $query->where($field, $value);
-            }
-        }
-
-        $data = [];
-
-        // Primary search
-        if (!empty($searchQuery)) {
-            $primaryQuery = clone $query;
-            $primaryResults = $primaryQuery
-                ->where($searchBy1, 'LIKE', "%{$searchQuery}%")
-                ->limit($limit)
-                ->get();
-
-            // Secondary search if needed and specified
-            $secondaryResults = collect();
-            if ($primaryResults->count() < $limit && !empty($searchBy2)) {
-                $secondaryQuery = clone $query;
-                $secondaryResults = $secondaryQuery
-                    ->where($searchBy2, 'LIKE', "%{$searchQuery}%")
-                    ->whereNotIn('id', $primaryResults->pluck('id')->toArray())
-                    ->limit($limit - $primaryResults->count())
-                    ->get();
-            }
-
-            $allResults = $primaryResults->merge($secondaryResults);
-        } else {
-            // No search query, just return filtered results
-            $allResults = $query->limit($limit)->get();
-        }
-
-        // Format the results based on display_format
-        foreach ($allResults as $item) {
-            $formattedItem = formatDropdownItem($item, $displayFormat);
-            if ($formattedItem) {
-                $data[] = $formattedItem;
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-            'meta' => [
-                'total' => count($data),
-                'limit' => $limit,
-                'model' => $modelName,
-                'search_query' => $searchQuery,
-                'filters_applied' => count($conditions)
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('AJAX Dropdown Error: ' . $e->getMessage(), [
-            'model' => $request->get('model'),
-            'query' => $request->get('q'),
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'An error occurred while fetching data',
-            'data' => []
-        ], 500);
-    }
-})->name('ajax.dropdown');
-
-/**
  * Helper function to format dropdown items based on display format
+ * Must be defined before the route that uses it
  */
-function formatDropdownItem($item, $format) {
-    switch ($format) {
-        case 'id_name':
-            $text = "#{$item->id}";
-            if (isset($item->name)) {
-                $text .= " - {$item->name}";
-            }
-            break;
-
-        case 'name_only':
-            $text = $item->name ?? "Item #{$item->id}";
-            break;
-
-        case 'full_name':
-            if (isset($item->first_name) && isset($item->last_name)) {
-                $text = trim("{$item->first_name} {$item->last_name}");
-            } elseif (isset($item->name)) {
-                $text = $item->name;
-            } else {
+if (!function_exists('formatDropdownItem')) {
+    function formatDropdownItem($item, $format) {
+        switch ($format) {
+            case 'id_name':
                 $text = "#{$item->id}";
-            }
-            // Add additional info for patients
-            if (isset($item->user_type) && $item->user_type === 'Patient') {
-                if (isset($item->phone_number_1) && !empty($item->phone_number_1)) {
-                    $text .= " - {$item->phone_number_1}";
-                } elseif (isset($item->email) && !empty($item->email)) {
-                    $text .= " - {$item->email}";
+                if (isset($item->name)) {
+                    $text .= " - {$item->name}";
                 }
-            }
-            break;
+                break;
 
-        case 'email_name':
-            $text = $item->email ?? "#{$item->id}";
-            if (isset($item->name)) {
-                $text .= " ({$item->name})";
-            }
-            break;
+            case 'name_only':
+                $text = $item->name ?? "Item #{$item->id}";
+                break;
 
-        case 'consultation_patient':
-            // Format: "CON-001 - John Doe" for consultations
-            $consultationNumber = $item->consultation_number ?? "CON-{$item->id}";
-            $patientName = $item->patient_name ?? 'Unknown Patient';
-            $text = "{$consultationNumber} - {$patientName}";
-            break;
+            case 'full_name':
+                if (isset($item->first_name) && isset($item->last_name)) {
+                    $text = trim("{$item->first_name} {$item->last_name}");
+                } elseif (isset($item->name)) {
+                    $text = $item->name;
+                } else {
+                    $text = "#{$item->id}";
+                }
+                // Add additional info for patients/doctors
+                if (isset($item->user_type)) {
+                    if ($item->user_type === 'Patient' && isset($item->phone_number_1) && !empty($item->phone_number_1)) {
+                        $text .= " - {$item->phone_number_1}";
+                    } elseif ($item->user_type === 'Doctor' && isset($item->specialization) && !empty($item->specialization)) {
+                        $text .= " ({$item->specialization})";
+                    }
+                }
+                break;
 
-        case 'stock_item_with_quantity':
-            // Format: "Paracetamol (50 tablets)" for stock items
-            $name = $item->name ?? "Item #{$item->id}";
-            $quantity = $item->current_quantity ?? 0;
-            $unit = $item->measuring_unit ?? 'units';
-            $text = "{$name} ({$quantity} {$unit})";
-            break;
+            case 'email_name':
+                $text = $item->email ?? "#{$item->id}";
+                if (isset($item->name)) {
+                    $text .= " ({$item->name})";
+                }
+                break;
 
-        case 'custom':
-            // For custom format, try to use a getDropdownText method on the model
-            if (method_exists($item, 'getDropdownText')) {
-                $text = $item->getDropdownText();
-            } else {
-                $text = $item->name ?? "#{$item->id}";
-            }
-            break;
+            case 'consultation_patient':
+                // Format: "CON-001 - John Doe" for consultations
+                $consultationNumber = $item->consultation_number ?? "CON-{$item->id}";
+                $patientName = $item->patient_name ?? 'Unknown Patient';
+                $text = "{$consultationNumber} - {$patientName}";
+                break;
 
-        default:
-            $text = "#{$item->id}";
-            if (isset($item->name)) {
-                $text .= " - {$item->name}";
-            }
-            break;
+            case 'stock_item_with_quantity':
+                // Format: "Paracetamol (50 tablets)" for stock items
+                $name = $item->name ?? "Item #{$item->id}";
+                $quantity = $item->current_quantity ?? 0;
+                $unit = $item->measuring_unit ?? 'units';
+                $text = "{$name} ({$quantity} {$unit})";
+                break;
+
+            case 'custom':
+                // For custom format, try to use a getDropdownText method on the model
+                if (method_exists($item, 'getDropdownText')) {
+                    $text = $item->getDropdownText();
+                } else {
+                    $text = $item->name ?? "#{$item->id}";
+                }
+                break;
+
+            default:
+                $text = "#{$item->id}";
+                if (isset($item->name)) {
+                    $text .= " - {$item->name}";
+                }
+                break;
+        }
+
+        return [
+            'id' => $item->id,
+            'text' => $text,
+            'data' => [
+                'model' => class_basename($item),
+                'original' => $item->only([
+                    'id', 'name', 'email', 'first_name', 'last_name', 'phone_number_1', 'user_type',
+                    'consultation_number', 'patient_name', 'patient_id', 'main_status',
+                    'current_quantity', 'measuring_unit', 'sale_price', 'specialization', 'department'
+                ])
+            ]
+        ];
     }
-
-    return [
-        'id' => $item->id,
-        'text' => $text,
-        'data' => [
-            'model' => class_basename($item),
-            'original' => $item->only([
-                'id', 'name', 'email', 'first_name', 'last_name', 'phone_number_1', 'user_type',
-                'consultation_number', 'patient_name', 'patient_id', 'main_status',
-                'current_quantity', 'measuring_unit', 'sale_price'
-            ])
-        ]
-    ];
 }
 
+// Legacy ajax-cards route (kept for backward compatibility)
 Route::get('ajax-cards', function (Request $r) {
 
     $users = User::where('card_number', 'like', "%" . $r->get('q') . "%")
