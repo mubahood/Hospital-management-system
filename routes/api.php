@@ -36,6 +36,8 @@ Route::middleware([JwtMiddleware::class])->group(function () {
     Route::get('medical-services/{id}', [\App\Http\Controllers\Api\MedicalServiceController::class, 'show']);
     Route::put('medical-services/{id}', [\App\Http\Controllers\Api\MedicalServiceController::class, 'update']);
     Route::delete('medical-services/{id}', [\App\Http\Controllers\Api\MedicalServiceController::class, 'destroy']);
+    Route::post('medical-services/{id}/items', [\App\Http\Controllers\Api\MedicalServiceController::class, 'addMedicalServiceItem']);
+    Route::delete('medical-services/{serviceId}/items/{itemId}', [\App\Http\Controllers\Api\MedicalServiceController::class, 'deleteMedicalServiceItem']);
 
     // Specialized AJAX endpoints for dropdowns
     Route::get('ajax/consultations', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getConsultationsForDropdown']);

@@ -668,4 +668,247 @@ class MedicalServiceController extends Controller
             return $this->error('Error retrieving stock items: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Add or update a medical service item
+     * Handles both create and update based on _action parameter
+     */
+    public function addMedicalServiceItem(Request $request, $id)
+    {
+        try {
+            // Find the medical service
+            $service = MedicalService::find($id);
+            
+            if (!$service) {
+                return $this->error('Medical service not found');
+            }
+
+            // Check if this is an update or create
+            $isUpdate = $request->_action === 'update' && $request->has('id');
+
+            // Validation rules
+            $rules = [
+                'id' => $isUpdate ? 'required|exists:medical_service_items,id' : 'nullable',
+                'stock_item_id' => 'required|exists:stock_items,id',
+                'quantity' => 'required|numeric|min:0.01',
+                'description' => 'required|string',
+                'file' => 'nullable|file|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx|max:5120', // Max 5MB
+            ];
+
+            $validator = Validator::make($request->all(), $rules, [
+                'file.mimes' => 'File must be an image (jpg, jpeg, png, gif) or document (pdf, doc, docx, xls, xlsx)',
+                'file.max' => 'File size must not exceed 5MB',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->error($validator->errors()->first(), $validator->errors());
+            }
+
+            DB::beginTransaction();
+
+            // Get stock item to fetch current price
+            $stockItem = StockItem::find($request->stock_item_id);
+            
+            if (!$stockItem) {
+                return $this->error('Stock item not found');
+            }
+
+            $quantity = floatval($request->quantity);
+            $unitPrice = floatval($stockItem->current_price ?? 0);
+            $totalPrice = $quantity * $unitPrice;
+
+            // Handle file upload
+            $filePath = null;
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                
+                // Validate file is not a script or executable
+                $dangerousExtensions = ['php', 'js', 'exe', 'bat', 'sh', 'py', 'rb', 'pl', 'cgi', 'asp', 'aspx', 'jsp'];
+                $fileExtension = strtolower($file->getClientOriginalExtension());
+                
+                if (in_array($fileExtension, $dangerousExtensions)) {
+                    DB::rollBack();
+                    return $this->error('This file type is not allowed for security reasons');
+                }
+                
+                // Generate unique filename
+                $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                $sanitizedName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $originalName);
+                $fileName = $sanitizedName . '_' . time() . '_' . uniqid() . '.' . $fileExtension;
+                
+                // Store in public/storage/images
+                $destinationPath = public_path('storage/images');
+                
+                // Create directory if it doesn't exist
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0755, true);
+                }
+                
+                // Move file
+                $file->move($destinationPath, $fileName);
+                $filePath = 'storage/images/' . $fileName;
+            }
+
+            $itemData = [
+                'stock_item_id' => $request->stock_item_id,
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'total_price' => $totalPrice,
+                'description' => $request->description,
+            ];
+
+            // Only update file path if a new file was uploaded
+            if ($filePath !== null) {
+                $itemData['file'] = $filePath;
+            }
+
+            if ($isUpdate) {
+                // Update existing item
+                $item = \App\Models\MedicalServiceItem::find($request->id);
+                
+                if (!$item) {
+                    DB::rollBack();
+                    return $this->error('Medical service item not found');
+                }
+                
+                // Verify item belongs to this service
+                if ($item->medical_service_id != $service->id) {
+                    DB::rollBack();
+                    return $this->error('Item does not belong to this medical service');
+                }
+
+                // Delete old file if new file uploaded
+                if ($filePath !== null && $item->file) {
+                    $oldFilePath = public_path($item->file);
+                    if (file_exists($oldFilePath)) {
+                        @unlink($oldFilePath);
+                    }
+                }
+                
+                $item->update($itemData);
+                
+                $successMessage = 'Medical service item updated successfully';
+            } else {
+                // Create new item
+                $itemData['medical_service_id'] = $service->id;
+                $item = \App\Models\MedicalServiceItem::create($itemData);
+                
+                $successMessage = 'Medical service item added successfully';
+            }
+
+            DB::commit();
+
+            // Reload service with all items
+            $service->load(['consultation.patient', 'assigned_to', 'medical_service_items.stock_item']);
+
+            // Transform medical service items
+            $items = $service->medical_service_items->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'stock_item_id' => $item->stock_item_id,
+                    'stock_item_name' => $item->stock_item?->name ?? 'N/A',
+                    'description' => $item->description,
+                    'quantity' => floatval($item->quantity),
+                    'unit_price' => floatval($item->unit_price),
+                    'total_price' => floatval($item->total_price),
+                    'measuring_unit' => $item->stock_item?->measuring_unit ?? '',
+                    'remarks' => $item->remarks ?? '',
+                    'file' => $item->file ?? null,
+                ];
+            });
+
+            $totalItemsCost = $items->sum('total_price');
+
+            return $this->success([
+                'item' => [
+                    'id' => $item->id,
+                    'stock_item_id' => $item->stock_item_id,
+                    'stock_item_name' => $stockItem->name,
+                    'description' => $item->description,
+                    'quantity' => floatval($item->quantity),
+                    'unit_price' => floatval($item->unit_price),
+                    'total_price' => floatval($item->total_price),
+                    'measuring_unit' => $stockItem->measuring_unit ?? '',
+                    'file' => $item->file ?? null,
+                ],
+                'service' => [
+                    'id' => $service->id,
+                    'consultation_id' => $service->consultation_id,
+                    'medical_service_items' => $items,
+                    'total_items_cost' => $totalItemsCost,
+                ],
+            ], $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->error('Error adding medical service item: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete a medical service item
+     */
+    public function deleteMedicalServiceItem(Request $request, $serviceId, $itemId)
+    {
+        try {
+            // Find the medical service
+            $service = MedicalService::find($serviceId);
+            
+            if (!$service) {
+                return $this->error('Medical service not found');
+            }
+
+            // Find the item
+            $item = \App\Models\MedicalServiceItem::find($itemId);
+            
+            if (!$item) {
+                return $this->error('Medical service item not found');
+            }
+
+            // Verify item belongs to this service
+            if ($item->medical_service_id != $service->id) {
+                return $this->error('Item does not belong to this medical service');
+            }
+
+            DB::beginTransaction();
+
+            // Delete the item
+            $item->delete();
+
+            DB::commit();
+
+            // Reload service with all remaining items
+            $service->load(['consultation.patient', 'assigned_to', 'medical_service_items.stock_item']);
+
+            // Transform medical service items
+            $items = $service->medical_service_items->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'stock_item_id' => $item->stock_item_id,
+                    'stock_item_name' => $item->stock_item?->name ?? 'N/A',
+                    'description' => $item->description,
+                    'quantity' => floatval($item->quantity),
+                    'unit_price' => floatval($item->unit_price),
+                    'total_price' => floatval($item->total_price),
+                    'measuring_unit' => $item->stock_item?->measuring_unit ?? '',
+                    'remarks' => $item->remarks ?? '',
+                ];
+            });
+
+            $totalItemsCost = $items->sum('total_price');
+
+            return $this->success([
+                'service' => [
+                    'id' => $service->id,
+                    'consultation_id' => $service->consultation_id,
+                    'medical_service_items' => $items,
+                    'total_items_cost' => $totalItemsCost,
+                ],
+            ], 'Medical service item deleted successfully');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->error('Error deleting medical service item: ' . $e->getMessage());
+        }
+    }
 }
