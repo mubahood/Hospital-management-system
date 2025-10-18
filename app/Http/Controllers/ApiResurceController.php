@@ -470,7 +470,7 @@ class ApiResurceController extends Controller
 
             // Special handling for Consultation model with new patient
             if ($model === 'Consultation' && isset($validData['is_new_patient'])) {
-                \Log::info('🔵 ApiResurceController - Processing Consultation with new patient flag', [
+                Log::info('🔵 ApiResurceController - Processing Consultation with new patient flag', [
                     'is_new_patient_raw' => $validData['is_new_patient'],
                     'new_patient_first_name' => $validData['new_patient_first_name'] ?? 'not set',
                     'new_patient_last_name' => $validData['new_patient_last_name'] ?? 'not set',
@@ -482,21 +482,21 @@ class ApiResurceController extends Controller
                 // Convert string boolean to actual boolean
                 if ($validData['is_new_patient'] === 'true' || $validData['is_new_patient'] === '1' || $validData['is_new_patient'] === 1) {
                     $validData['is_new_patient'] = true;
-                    \Log::info('✅ Converted is_new_patient to TRUE');
+                    Log::info('✅ Converted is_new_patient to TRUE');
                 } elseif ($validData['is_new_patient'] === 'false' || $validData['is_new_patient'] === '0' || $validData['is_new_patient'] === 0) {
                     $validData['is_new_patient'] = false;
-                    \Log::info('✅ Converted is_new_patient to FALSE');
+                    Log::info('✅ Converted is_new_patient to FALSE');
                 }
 
                 // Normalize empty string patient_id to null
                 if (isset($validData['patient_id']) && $validData['patient_id'] === '') {
                     $validData['patient_id'] = null;
-                    \Log::info('🔵 Normalized empty string patient_id to null');
+                    Log::info('🔵 Normalized empty string patient_id to null');
                 }
 
                 // Validate new patient fields if is_new_patient is true
                 if ($validData['is_new_patient'] === true) {
-                    \Log::info('🟢 Validating new patient fields');
+                    Log::info('🟢 Validating new patient fields');
                     
                     $requiredNewPatientFields = ['new_patient_first_name', 'new_patient_last_name'];
                     $missingFields = [];
@@ -513,27 +513,27 @@ class ApiResurceController extends Controller
                     }
                     
                     if (!empty($missingFields)) {
-                        \Log::error('❌ Missing required new patient fields', ['missing' => $missingFields]);
+                        Log::error('❌ Missing required new patient fields', ['missing' => $missingFields]);
                         return $this->error(
                             'Missing required fields for new patient: ' . implode(', ', $missingFields),
                             422
                         );
                     }
                     
-                    \Log::info('✅ New patient validation passed');
+                    Log::info('✅ New patient validation passed');
                     
                     // Ensure patient_id is null for new patients (will be set after patient creation)
                     $validData['patient_id'] = null;
                 } else {
                     // For existing patients, ensure patient_id is provided and not empty
-                    \Log::info('🔵 Existing patient - validating patient_id');
+                    Log::info('🔵 Existing patient - validating patient_id');
                     
                     if (empty($validData['patient_id']) || $validData['patient_id'] === null) {
-                        \Log::error('❌ patient_id missing for existing patient consultation');
+                        Log::error('❌ patient_id missing for existing patient consultation');
                         return $this->error('Patient selection is required for existing patient consultations.', 422);
                     }
                     
-                    \Log::info('✅ Existing patient validation passed', ['patient_id' => $validData['patient_id']]);
+                    Log::info('✅ Existing patient validation passed', ['patient_id' => $validData['patient_id']]);
                 }
             }
 
