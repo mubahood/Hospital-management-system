@@ -8,6 +8,31 @@ use Illuminate\Database\Eloquent\Model;
 class StockItemCategory extends Model
 {
     use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     */
+    protected $fillable = [
+        'name',
+        'description',
+        'measuring_unit',
+        'reorder_level',
+        'status',
+        'current_stock_quantity',
+        'current_stock_value',
+        'enterprise_id',
+        'company_id',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'reorder_level' => 'integer',
+        'current_stock_quantity' => 'decimal:2',
+        'current_stock_value' => 'decimal:2',
+    ];
+
     //boot disable deleting
     public static function boot()
     {

@@ -566,7 +566,10 @@ class ApiResurceController extends Controller
                 }
 
                 // Refresh model to get updated data (with relationships)
-                $obj->load('medical_services'); // Load medical services relationship if exists
+                // Only load medical_services for Consultation model
+                if ($model === 'Consultation' && method_exists($obj, 'medical_services')) {
+                    $obj->load('medical_services');
+                }
                 $obj->refresh();
 
                 DB::commit();
