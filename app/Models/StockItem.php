@@ -60,7 +60,11 @@ class StockItem extends Model
         $toal_quantities_used = StockOutRecord::where('stock_item_id', $this->id)->sum('quantity');
         $this->current_quantity = $this->original_quantity - $toal_quantities_used;
         $this->current_stock_value = $this->current_quantity * $this->sale_price;
-        $this->save();
+        try {
+            $this->save();
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
     }
 
     public static function preparing($model)
