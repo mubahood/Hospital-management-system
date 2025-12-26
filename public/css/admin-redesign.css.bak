@@ -1,0 +1,876 @@
+/*
+|--------------------------------------------------------------------------
+| Hospital Management System - Laravel Admin Redesign
+|--------------------------------------------------------------------------
+|
+| Custom CSS based on React Frontend Design System
+| Color Palette: Gray-scale with Sky Blue accents
+| Design Philosophy: Clean, Professional, Consistent
+| 
+| Color System:
+| - Primary: #0ea5e9 (Sky-500)
+| - Gray-800: #1f2937 (Headings, Primary Text)
+| - Gray-600: #4b5563 (Secondary Text)
+| - Gray-500: #6b7280 (Tertiary Text, Icons)
+| - Gray-400: #9ca3af (Placeholders)
+| - Gray-300: #d1d5db (Borders)
+| - Gray-100: #f3f4f6 (Backgrounds)
+| - Gray-50: #f9fafb (Light Backgrounds)
+| - Success: #10b981 (Green-500)
+| - Warning: #f59e0b (Amber-500)
+| - Error: #dc2626 (Red-600)
+|
+|--------------------------------------------------------------------------
+*/
+
+/* ==========================================================================
+   TYPOGRAPHY SYSTEM
+   ========================================================================== */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1f2937 !important;
+    background-color: #f9fafb !important;
+}
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    line-height: 1.3 !important;
+    margin-bottom: 0.75rem !important;
+}
+
+h1, .h1 { font-size: 28px !important; }
+h2, .h2 { font-size: 24px !important; }
+h3, .h3 { font-size: 20px !important; }
+h4, .h4 { font-size: 18px !important; }
+h5, .h5 { font-size: 16px !important; }
+h6, .h6 { font-size: 14px !important; }
+
+p {
+    font-size: 14px !important;
+    color: #4b5563 !important;
+    line-height: 1.6 !important;
+    margin-bottom: 0.75rem !important;
+}
+
+/* ==========================================================================
+   COLOR UTILITIES
+   ========================================================================== */
+
+.text-primary { color: #0ea5e9 !important; }
+.text-gray-800 { color: #1f2937 !important; }
+.text-gray-600 { color: #4b5563 !important; }
+.text-gray-500 { color: #6b7280 !important; }
+.text-gray-400 { color: #9ca3af !important; }
+.text-success { color: #10b981 !important; }
+.text-warning { color: #f59e0b !important; }
+.text-danger { color: #dc2626 !important; }
+.text-error { color: #dc2626 !important; }
+
+.bg-primary { background-color: #0ea5e9 !important; }
+.bg-gray-50 { background-color: #f9fafb !important; }
+.bg-gray-100 { background-color: #f3f4f6 !important; }
+.bg-gray-200 { background-color: #e5e7eb !important; }
+.bg-success { background-color: #10b981 !important; }
+.bg-warning { background-color: #f59e0b !important; }
+.bg-danger { background-color: #dc2626 !important; }
+
+.border-primary { border-color: #0ea5e9 !important; }
+.border-gray-300 { border-color: #d1d5db !important; }
+.border-gray-200 { border-color: #e5e7eb !important; }
+
+/* ==========================================================================
+   LOGIN PAGE REDESIGN
+   ========================================================================== */
+
+/* Login Container */
+.login-page {
+    background: linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%) !important;
+    min-height: 100vh;
+}
+
+.login-card {
+    background: white !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    padding: 48px !important;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.login-logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    display: block;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.login-title {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    text-align: center;
+    margin-bottom: 8px !important;
+}
+
+.login-subtitle {
+    font-size: 14px !important;
+    color: #6b7280 !important;
+    text-align: center;
+    margin-bottom: 32px !important;
+}
+
+/* ==========================================================================
+   FORM ELEMENTS
+   ========================================================================== */
+
+.form-control {
+    border: 1px solid #d1d5db !important;
+    border-radius: 8px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    color: #1f2937 !important;
+    transition: all 0.2s ease !important;
+    background-color: white !important;
+}
+
+.form-control:focus {
+    border-color: #0ea5e9 !important;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1) !important;
+    outline: none !important;
+}
+
+.form-control::placeholder {
+    color: #9ca3af !important;
+    font-weight: 500 !important;
+}
+
+.form-control.is-invalid,
+.form-control.border-danger {
+    border-color: #dc2626 !important;
+}
+
+.form-control.is-invalid:focus,
+.form-control.border-danger:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+}
+
+.form-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+    margin-bottom: 6px !important;
+    display: block;
+}
+
+.form-select {
+    border: 1px solid #d1d5db !important;
+    border-radius: 8px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    color: #1f2937 !important;
+    background-color: white !important;
+}
+
+.form-select:focus {
+    border-color: #0ea5e9 !important;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1) !important;
+}
+
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 20px !important;
+}
+
+/* Input Icons */
+.form-control-icon {
+    position: relative;
+}
+
+.form-control-icon input {
+    padding-left: 40px !important;
+}
+
+.form-control-icon i,
+.form-control-icon svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    font-size: 16px;
+}
+
+/* ==========================================================================
+   BUTTON SYSTEM
+   ========================================================================== */
+
+.btn {
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+/* Primary Button */
+.btn-primary {
+    background-color: #0ea5e9 !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background-color: #0284c7 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Secondary Button */
+.btn-secondary {
+    background-color: #6b7280 !important;
+    color: white !important;
+}
+
+.btn-secondary:hover {
+    background-color: #4b5563 !important;
+}
+
+/* Success Button */
+.btn-success {
+    background-color: #10b981 !important;
+    color: white !important;
+}
+
+.btn-success:hover {
+    background-color: #059669 !important;
+}
+
+/* Warning Button */
+.btn-warning {
+    background-color: #f59e0b !important;
+    color: white !important;
+}
+
+.btn-warning:hover {
+    background-color: #d97706 !important;
+}
+
+/* Danger Button */
+.btn-danger {
+    background-color: #dc2626 !important;
+    color: white !important;
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c !important;
+}
+
+/* Outline Buttons */
+.btn-outline-primary {
+    background-color: transparent !important;
+    border: 2px solid #0ea5e9 !important;
+    color: #0ea5e9 !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: #0ea5e9 !important;
+    color: white !important;
+}
+
+/* Button Sizes */
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+.btn-lg {
+    padding: 14px 28px !important;
+    font-size: 16px !important;
+}
+
+.btn-block {
+    width: 100%;
+    display: flex;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+/* Statistics Cards */
+.stat-card {
+    padding: 20px !important;
+    border-left: 4px solid #0ea5e9 !important;
+}
+
+.stat-card.success {
+    border-left-color: #10b981 !important;
+}
+
+.stat-card.warning {
+    border-left-color: #f59e0b !important;
+}
+
+.stat-card.danger {
+    border-left-color: #dc2626 !important;
+}
+
+.stat-value {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    line-height: 1 !important;
+    margin-bottom: 8px !important;
+}
+
+.stat-label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #6b7280 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ==========================================================================
+   TABLE SYSTEM
+   ========================================================================== */
+
+.table-wrapper {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0 !important;
+    width: 100%;
+}
+
+.table thead th {
+    background-color: #f9fafb !important;
+    color: #6b7280 !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 12px 16px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    border-top: none !important;
+}
+
+.table tbody td {
+    padding: 12px 16px !important;
+    font-size: 13px !important;
+    color: #4b5563 !important;
+    border-bottom: 1px solid #f3f4f6 !important;
+    vertical-align: middle !important;
+}
+
+.table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f9fafb !important;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Table Actions */
+.table-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.table-actions .btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+/* Striped Tables */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #f9fafb !important;
+}
+
+/* ==========================================================================
+   ALERT SYSTEM
+   ========================================================================== */
+
+.alert {
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 20px !important;
+    border: 1px solid transparent !important;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.alert-success {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+    border-color: #6ee7b7 !important;
+}
+
+.alert-warning {
+    background-color: #fef3c7 !important;
+    color: #78350f !important;
+    border-color: #fcd34d !important;
+}
+
+.alert-danger,
+.alert-error {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    border-color: #fca5a5 !important;
+}
+
+.alert-info {
+    background-color: #dbeafe !important;
+    color: #1e40af !important;
+    border-color: #93c5fd !important;
+}
+
+.alert strong {
+    font-weight: 600 !important;
+}
+
+/* ==========================================================================
+   BADGE SYSTEM
+   ========================================================================== */
+
+.badge {
+    display: inline-flex !important;
+    align-items: center;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.badge-primary {
+    background-color: #dbeafe !important;
+    color: #0369a1 !important;
+}
+
+.badge-success {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+}
+
+.badge-warning {
+    background-color: #fef3c7 !important;
+    color: #78350f !important;
+}
+
+.badge-danger {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+.badge-secondary {
+    background-color: #f3f4f6 !important;
+    color: #4b5563 !important;
+}
+
+/* ==========================================================================
+   NAVIGATION / SIDEBAR
+   ========================================================================== */
+
+.main-sidebar {
+    background-color: #1f2937 !important;
+}
+
+.sidebar-menu > li > a {
+    color: #d1d5db !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease;
+}
+
+.sidebar-menu > li > a:hover {
+    background-color: #374151 !important;
+    color: white !important;
+}
+
+.sidebar-menu > li.active > a {
+    background-color: #0ea5e9 !important;
+    color: white !important;
+    border-left: 4px solid #0284c7;
+}
+
+.sidebar-menu > li > a > i {
+    color: #9ca3af !important;
+    margin-right: 10px;
+}
+
+.sidebar-menu > li.active > a > i {
+    color: white !important;
+}
+
+/* ==========================================================================
+   HEADER / NAVBAR
+   ========================================================================== */
+
+.main-header {
+    background-color: white !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+.main-header .navbar {
+    background-color: transparent !important;
+}
+
+.navbar-nav > li > a {
+    color: #4b5563 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    padding: 12px 16px !important;
+}
+
+.navbar-nav > li > a:hover {
+    color: #0ea5e9 !important;
+}
+
+/* ==========================================================================
+   BREADCRUMB
+   ========================================================================== */
+
+.breadcrumb {
+    background-color: transparent !important;
+    padding: 8px 0 !important;
+    margin-bottom: 20px !important;
+}
+
+.breadcrumb-item {
+    font-size: 13px !important;
+    color: #6b7280 !important;
+}
+
+.breadcrumb-item.active {
+    color: #1f2937 !important;
+    font-weight: 600 !important;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    color: #d1d5db !important;
+    content: "/" !important;
+}
+
+.breadcrumb-item a {
+    color: #0ea5e9 !important;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: #0284c7 !important;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+
+.pagination {
+    margin-top: 24px !important;
+    display: flex;
+    gap: 4px;
+}
+
+.page-item .page-link {
+    color: #4b5563 !important;
+    background-color: white !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease;
+    margin: 0 2px;
+}
+
+.page-item .page-link:hover {
+    background-color: #f3f4f6 !important;
+    border-color: #9ca3af !important;
+    color: #1f2937 !important;
+}
+
+.page-item.active .page-link {
+    background-color: #0ea5e9 !important;
+    border-color: #0ea5e9 !important;
+    color: white !important;
+}
+
+.page-item.disabled .page-link {
+    background-color: #f9fafb !important;
+    border-color: #e5e7eb !important;
+    color: #9ca3af !important;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   MODAL SYSTEM
+   ========================================================================== */
+
+.modal-content {
+    border-radius: 12px !important;
+    border: none !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.modal-header {
+    background-color: #f9fafb !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    padding: 20px 24px !important;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.modal-title {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+}
+
+.modal-body {
+    padding: 24px !important;
+}
+
+.modal-footer {
+    background-color: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+    padding: 16px 24px !important;
+    border-radius: 0 0 12px 12px !important;
+}
+
+/* ==========================================================================
+   DROPDOWN MENU
+   ========================================================================== */
+
+.dropdown-menu {
+    border-radius: 8px !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    padding: 8px !important;
+}
+
+.dropdown-item {
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    color: #4b5563 !important;
+    transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #f3f4f6 !important;
+    color: #1f2937 !important;
+}
+
+.dropdown-item.active {
+    background-color: #0ea5e9 !important;
+    color: white !important;
+}
+
+.dropdown-divider {
+    border-top: 1px solid #e5e7eb !important;
+    margin: 8px 0 !important;
+}
+
+/* ==========================================================================
+   CONTENT HEADER
+   ========================================================================== */
+
+.content-header {
+    background-color: white !important;
+    border-radius: 12px;
+    padding: 24px !important;
+    margin-bottom: 24px;
+    border: 1px solid #e5e7eb;
+}
+
+.content-header h1 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    margin: 0 !important;
+}
+
+/* ==========================================================================
+   BOX SYSTEM (Laravel Admin Boxes)
+   ========================================================================== */
+
+.box {
+    background: white !important;
+    border-radius: 12px !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+    margin-bottom: 24px;
+}
+
+.box-header {
+    background-color: #f9fafb !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    padding: 16px 20px !important;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.box-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    margin: 0 !important;
+}
+
+.box-body {
+    padding: 20px !important;
+}
+
+.box-footer {
+    background-color: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+    padding: 16px 20px !important;
+    border-radius: 0 0 12px 12px !important;
+}
+
+/* ==========================================================================
+   LINKS
+   ========================================================================== */
+
+a {
+    color: #0ea5e9 !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #0284c7 !important;
+}
+
+a:focus {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 2px;
+}
+
+/* ==========================================================================
+   LOADING SPINNER
+   ========================================================================== */
+
+.spinner {
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid #0ea5e9;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   RESPONSIVE UTILITIES
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .card-body {
+        padding: 16px !important;
+    }
+    
+    .table-responsive {
+        border-radius: 12px;
+        overflow-x: auto;
+    }
+    
+    .login-card {
+        padding: 32px !important;
+    }
+}
+
+/* ==========================================================================
+   CUSTOM SCROLLBAR
+   ========================================================================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* ==========================================================================
+   TRANSITIONS
+   ========================================================================== */
+
+* {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+button, .btn, a, input, select, textarea {
+    transition: all 0.2s ease !important;
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+
+@media print {
+    .main-sidebar,
+    .main-header,
+    .btn,
+    .table-actions {
+        display: none !important;
+    }
+    
+    .content-wrapper {
+        margin-left: 0 !important;
+    }
+}

@@ -158,21 +158,73 @@ class ConsultationController extends AdminController
 
         $u = Admin::user();
 
-        $ajax_url = url(
-            '/api/ajax?'
-                . "search_by_1=name"
-                . "&search_by_2=id"
-                . "&model=User"
-                // . "&query_user_type=Patient"
-        );
-        $form->select('patient_id', "Select Patient")
+        $ajax_url = url('/api/ajax');
+/*         $form->select('patient_id', "Select Patient")
             ->options(function ($id) {
-                $a = User::find($id);
+                $a = User::where('id', $id)->where('user_type', 'Patient')->first();
                 if ($a) {
                     return [$a->id => "#" . $a->id . " - " . $a->name];
                 }
+                return [];
             })
-            ->ajax($ajax_url)->rules('required');
+            ->ajax($ajax_url, 'id', 'text')
+            ->rules('required'); */
+
+            $form->text('patient_id', "Select Patient");
+
+        // Fix Select2 AJAX processResults for patient dropdown
+        Admin::script(<<<JS
+$(function() {
+    // Override the Select2 configuration for patient dropdown
+    $('#patient_id').select2('destroy');
+    $('#patient_id').select2({
+        ajax: {
+            url: '{$ajax_url}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term,
+                    model: 'Patient',
+                    search_by_1: 'first_name',
+                    search_by_2: 'last_name',
+                    display_format: 'full_name',
+                    limit: 50
+                };
+            },
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                
+                // Check if the response has the expected structure
+                if (data && data.success && Array.isArray(data.data)) {
+                    return {
+                        results: data.data.map(function(item) {
+                            return {
+                                id: item.id,
+                                text: item.text
+                            };
+                        })
+                    };
+                }
+                
+                // Fallback for unexpected response format
+                console.error('Unexpected API response format:', data);
+                return {
+                    results: []
+                };
+            },
+            cache: true
+        },
+        placeholder: 'Select a patient',
+        allowClear: true,
+        escapeMarkup: function (markup) {
+            return markup;
+        },
+        minimumInputLength: 0
+    });
+});
+JS
+        );
 
         $form->hidden('receptionist_id', __('Receptionist id'))->default($u->id);
         $form->tags('services_requested', __('Services Requested'))

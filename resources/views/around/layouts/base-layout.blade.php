@@ -38,12 +38,224 @@
 
     <!-- Theme styles + Bootstrap -->
     <link rel="stylesheet" media="screen" href="{{ url('around') }}/assets/css/theme.min.css">
+    
+    <!-- Redesigned Admin CSS -->
+    <link rel="stylesheet" href="{{ url('css/admin-redesign.css') }}">
 
     <!-- Customizer generated styles -->
     <style id="customizer-styles"></style>
 
     <style>
         --primary: red;
+        
+        /* FORCE SQUARE CORNERS EVERYWHERE */
+        *,
+        *::before,
+        *::after {
+            border-radius: 0 !important;
+            -webkit-border-radius: 0 !important;
+            -moz-border-radius: 0 !important;
+        }
+        
+        /* REDUCE PADDING AND MARGINS */
+        .card {
+            padding: 12px !important;
+            margin-bottom: 12px !important;
+        }
+        
+        .card-body {
+            padding: 12px !important;
+        }
+        
+        .card-header {
+            padding: 8px 12px !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* BUTTONS - FORCE SQUARE AND SMALL PADDING */
+        .btn,
+        button,
+        input[type="button"],
+        input[type="submit"],
+        input[type="reset"],
+        .button,
+        a.btn,
+        [class*="btn-"] {
+            padding: 6px 12px !important;
+            margin: 2px !important;
+            border-radius: 0 !important;
+            -webkit-border-radius: 0 !important;
+            -moz-border-radius: 0 !important;
+        }
+        
+        .btn-sm,
+        .btn-group-sm > .btn {
+            padding: 4px 10px !important;
+        }
+        
+        .btn-lg,
+        .btn-group-lg > .btn {
+            padding: 8px 16px !important;
+        }
+        
+        .form-control,
+        .form-select,
+        input,
+        textarea,
+        select {
+            padding: 6px 10px !important;
+            margin-bottom: 8px !important;
+        }
+        
+        .table td,
+        .table th {
+            padding: 8px !important;
+        }
+        
+        .modal-content {
+            padding: 12px !important;
+        }
+        
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+            padding: 10px !important;
+        }
+        
+        .alert {
+            padding: 10px 12px !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .badge {
+            padding: 3px 8px !important;
+        }
+        
+        /* Navigation spacing */
+        .nav-link {
+            padding: 6px 12px !important;
+        }
+        
+        /* Sidebar spacing */
+        .sidebar-nav .nav-item {
+            margin-bottom: 4px !important;
+        }
+        
+        /* Container spacing */
+        .container,
+        .container-fluid {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+        }
+        
+        /* Row and column spacing */
+        .row {
+            margin-left: -8px !important;
+            margin-right: -8px !important;
+        }
+        
+        [class*="col-"] {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+        
+        /* List group spacing */
+        .list-group-item {
+            padding: 8px 12px !important;
+        }
+        
+        /* Dropdown spacing */
+        .dropdown-menu {
+            padding: 4px !important;
+        }
+        
+        .dropdown-item {
+            padding: 6px 12px !important;
+        }
+        
+        /* Avatar and images - keep square */
+        .avatar,
+        .avatar img,
+        img[class*="avatar"] {
+            border-radius: 0 !important;
+        }
+        
+        /* Progress bars */
+        .progress {
+            margin-bottom: 8px !important;
+        }
+        
+        /* Pagination */
+        .pagination {
+            margin-bottom: 8px !important;
+        }
+        
+        .page-link {
+            padding: 4px 10px !important;
+        }
+        
+        /* Tabs */
+        .nav-tabs .nav-link {
+            padding: 6px 12px !important;
+        }
+        
+        /* Breadcrumbs */
+        .breadcrumb {
+            padding: 6px 12px !important;
+            margin-bottom: 8px !important;
+        }
+        
+        /* ADDITIONAL BUTTON SPECIFICITY - Override Around Theme */
+        .btn-primary,
+        .btn-secondary,
+        .btn-success,
+        .btn-danger,
+        .btn-warning,
+        .btn-info,
+        .btn-light,
+        .btn-dark,
+        .btn-outline-primary,
+        .btn-outline-secondary,
+        .btn-outline-success,
+        .btn-outline-danger,
+        .btn-outline-warning,
+        .btn-outline-info,
+        .btn-outline-light,
+        .btn-outline-dark,
+        .btn-link {
+            border-radius: 0 !important;
+            -webkit-border-radius: 0 !important;
+            -moz-border-radius: 0 !important;
+            padding: 6px 12px !important;
+        }
+        
+        /* Input groups and button groups */
+        .input-group,
+        .btn-group,
+        .btn-group-vertical {
+            border-radius: 0 !important;
+        }
+        
+        .input-group > *,
+        .btn-group > *,
+        .btn-group-vertical > * {
+            border-radius: 0 !important;
+        }
+        
+        /* Search and filter buttons */
+        .input-group-text,
+        .input-group .btn,
+        .input-group button {
+            border-radius: 0 !important;
+            padding: 6px 12px !important;
+        }
+        
+        /* Specific overrides for common button patterns */
+        button[class*="btn"],
+        a[class*="btn"],
+        input[class*="btn"] {
+            border-radius: 0 !important;
+        }
     </style>
 
     <!-- Page loading styles -->

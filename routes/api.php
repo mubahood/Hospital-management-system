@@ -44,189 +44,6 @@ Route::middleware([JwtMiddleware::class])->group(function () {
     Route::get('ajax/employees', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getEmployeesForDropdown']);
     Route::get('ajax/stock-items', [\App\Http\Controllers\Api\MedicalServiceController::class, 'getStockItemsForDropdown']);
 
-    /**
-     * Dynamic AJAX Provider for Dropdowns
-     * 
-     * This endpoint provides a secure, flexible way to fetch data for dynamic dropdowns
-     * with search capabilities, filtering, and customizable formatting.
-     * 
-     * Query Parameters:
-     * - model: The model name (required)
-     * - q: Search query string
-     * - search_by_1: Primary search field (default: 'name')
-     * - search_by_2: Secondary search field (optional)
-     * - display_format: How to format the display text
-     * - limit: Number of results (max 50, default 20)
-     * - query_*: Filter conditions (e.g., query_status=active)
-     */
-    Route::get('ajax', function (Request $request) {
-        try {
-            // Define allowed models for security
-            $allowedModels = [
-                'Patient', // Special case - handled as User with user_type = 'Patient'
-                'Employee', 
-                'User',
-                'Doctor', // Special case - handled as User with user_type = 'Doctor'
-                'Department',
-                'Service',
-                'Room',
-                'Appointment',
-                'Consultation',
-                'Medicine',
-                'Supplier',
-                'Equipment',
-                'Ward',
-                'Bed',
-                'StockItem'
-            ];
-
-            // Get and validate model parameter
-            $modelName = trim($request->get('model', ''));
-            if (empty($modelName) || !in_array($modelName, $allowedModels)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid or missing model parameter',
-                    'data' => []
-                ], 400);
-            }
-
-            // Handle special cases for Patient, Doctor, and Employee
-            $actualModelName = $modelName;
-            $extraConditions = [];
-            
-            if ($modelName === 'Patient') {
-                $actualModelName = 'User';
-                $extraConditions['user_type'] = 'Patient';
-            } elseif ($modelName === 'Doctor') {
-                $actualModelName = 'User';
-                $extraConditions['user_type'] = 'Doctor';
-            } elseif ($modelName === 'Employee') {
-                $actualModelName = 'User';
-                // Get all users (employees) for the enterprise, no user_type filter
-                // The enterprise_id will be automatically filtered by the logged-in user's context
-            }
-
-            // Build the full model class name
-            $modelClass = "App\\Models\\{$actualModelName}";
-            
-            // Check if model class exists
-            if (!class_exists($modelClass)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Model not found',
-                    'data' => []
-                ], 404);
-            }
-
-            // Get search parameters
-            $searchQuery = trim($request->get('q', ''));
-            $searchBy1 = trim($request->get('search_by_1', 'first_name'));
-            $searchBy2 = trim($request->get('search_by_2', 'last_name'));
-            $displayFormat = trim($request->get('display_format', 'full_name'));
-            $limit = min(100, max(1, intval($request->get('limit', 100)))); // Max 100, min 1
-
-            // Extract filter conditions from query_* parameters
-            $conditions = [];
-            foreach ($request->all() as $key => $value) {
-                if (strpos($key, 'query_') === 0) {
-                    $fieldName = str_replace('query_', '', $key);
-                    // Sanitize field name to prevent injection
-                    if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $fieldName)) {
-                        // Skip 'role' field as it doesn't exist in User model
-                        if ($fieldName !== 'role') {
-                            $conditions[$fieldName] = $value;
-                        }
-                    }
-                }
-            }
-
-            // Build the base query
-            $query = $modelClass::query();
-
-            // Add enterprise filtering for User-based models (automatic security)
-            if ($actualModelName === 'User') {
-                $user = auth()->user();
-                if ($user && isset($user->enterprise_id)) {
-                    $query->where('enterprise_id', $user->enterprise_id);
-                }
-            }
-
-            // Apply special model conditions (like user_type for Patient/Doctor)
-            foreach ($extraConditions as $field => $value) {
-                $query->where($field, $value);
-            }
-
-            // Apply filter conditions from query_* parameters
-            foreach ($conditions as $field => $value) {
-                if (is_array($value)) {
-                    $query->whereIn($field, $value);
-                } else {
-                    $query->where($field, $value);
-                }
-            }
-
-            $data = [];
-
-            // Primary search
-            if (!empty($searchQuery)) {
-                $primaryQuery = clone $query;
-                $primaryResults = $primaryQuery
-                    ->where($searchBy1, 'LIKE', "%{$searchQuery}%")
-                    ->limit($limit)
-                    ->get();
-
-                // Secondary search if needed and specified
-                $secondaryResults = collect();
-                if ($primaryResults->count() < $limit && !empty($searchBy2)) {
-                    $secondaryQuery = clone $query;
-                    $secondaryResults = $secondaryQuery
-                        ->where($searchBy2, 'LIKE', "%{$searchQuery}%")
-                        ->whereNotIn('id', $primaryResults->pluck('id')->toArray())
-                        ->limit($limit - $primaryResults->count())
-                        ->get();
-                }
-
-                $allResults = $primaryResults->merge($secondaryResults);
-            } else {
-                // No search query, just return filtered results
-                $allResults = $query->limit($limit)->get();
-            }
-
-            // Format the results based on display_format
-            foreach ($allResults as $item) {
-                $formattedItem = formatDropdownItem($item, $displayFormat);
-                if ($formattedItem) {
-                    $data[] = $formattedItem;
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-                'meta' => [
-                    'total' => count($data),
-                    'limit' => $limit,
-                    'model' => $modelName,
-                    'search_query' => $searchQuery,
-                    'filters_applied' => count($conditions)
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('AJAX Dropdown Error: ' . $e->getMessage(), [
-                'model' => $request->get('model'),
-                'query' => $request->get('q'),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while fetching data',
-                'data' => []
-            ], 500);
-        }
-    })->name('ajax.dropdown');
-
     // Dynamic API routes - support both create and update operations
     Route::get('api/{model}', [ApiResurceController::class, 'index']);
     Route::get('api/{model}/{id}', [ApiResurceController::class, 'show']);
@@ -243,6 +60,193 @@ Route::POST("users/register", [ApiAuthController::class, "register"]);
 
 // Public manifest endpoint for unauthenticated users
 Route::get('manifest/public', [ManifestController::class, 'publicManifest']);
+
+/**
+ * Dynamic AJAX Provider for Dropdowns - NO JWT REQUIRED
+ * 
+ * This endpoint is accessible without JWT authentication to support
+ * Laravel-Admin forms which use session-based authentication.
+ * It provides a secure, flexible way to fetch data for dynamic dropdowns
+ * with search capabilities, filtering, and customizable formatting.
+ * 
+ * Query Parameters:
+ * - model: The model name (required)
+ * - q: Search query string
+ * - search_by_1: Primary search field (default: 'name')
+ * - search_by_2: Secondary search field (optional)
+ * - display_format: How to format the display text
+ * - limit: Number of results (max 50, default 20)
+ * - query_*: Filter conditions (e.g., query_status=active)
+ */
+Route::get('ajax', function (Request $request) {
+    try {
+        // Define allowed models for security
+        $allowedModels = [
+            'Patient', // Special case - handled as User with user_type = 'Patient'
+            'Employee', 
+            'User',
+            'Doctor', // Special case - handled as User with user_type = 'Doctor'
+            'Department',
+            'Service',
+            'Room',
+            'Appointment',
+            'Consultation',
+            'Medicine',
+            'Supplier',
+            'Equipment',
+            'Ward',
+            'Bed',
+            'StockItem'
+        ];
+
+        // Get and validate model parameter
+        $modelName = trim($request->get('model', ''));
+        if (empty($modelName) || !in_array($modelName, $allowedModels)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or missing model parameter',
+                'data' => []
+            ], 400);
+        }
+
+        // Handle special cases for Patient, Doctor, and Employee
+        $actualModelName = $modelName;
+        $extraConditions = [];
+        
+        if ($modelName === 'Patient') {
+            $actualModelName = 'User';
+            $extraConditions['user_type'] = 'Patient';
+        } elseif ($modelName === 'Doctor') {
+            $actualModelName = 'User';
+            $extraConditions['user_type'] = 'Doctor';
+        } elseif ($modelName === 'Employee') {
+            $actualModelName = 'User';
+            // Get all users (employees) for the enterprise, no user_type filter
+            // The enterprise_id will be automatically filtered by the logged-in user's context
+        }
+
+        // Build the full model class name
+        $modelClass = "App\\Models\\{$actualModelName}";
+        
+        // Check if model class exists
+        if (!class_exists($modelClass)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Model not found',
+                'data' => []
+            ], 404);
+        }
+
+        // Get search parameters
+        $searchQuery = trim($request->get('q', ''));
+        $searchBy1 = trim($request->get('search_by_1', 'first_name'));
+        $searchBy2 = trim($request->get('search_by_2', 'last_name'));
+        $displayFormat = trim($request->get('display_format', 'full_name'));
+        $limit = min(100, max(1, intval($request->get('limit', 100)))); // Max 100, min 1
+
+        // Extract filter conditions from query_* parameters
+        $conditions = [];
+        foreach ($request->all() as $key => $value) {
+            if (strpos($key, 'query_') === 0) {
+                $fieldName = str_replace('query_', '', $key);
+                // Sanitize field name to prevent injection
+                if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $fieldName)) {
+                    // Skip 'role' field as it doesn't exist in User model
+                    if ($fieldName !== 'role') {
+                        $conditions[$fieldName] = $value;
+                    }
+                }
+            }
+        }
+
+        // Build the base query
+        $query = $modelClass::query();
+
+        // Add enterprise filtering for User-based models (automatic security)
+        // Note: This works with session-based auth from Laravel-Admin
+        if ($actualModelName === 'User') {
+            // Try to get the authenticated admin user from session
+            $adminUser = \Encore\Admin\Facades\Admin::user();
+            if ($adminUser && isset($adminUser->enterprise_id)) {
+                $query->where('enterprise_id', $adminUser->enterprise_id);
+            }
+        }
+
+        // Apply special model conditions (like user_type for Patient/Doctor)
+        foreach ($extraConditions as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        // Apply filter conditions from query_* parameters
+        foreach ($conditions as $field => $value) {
+            if (is_array($value)) {
+                $query->whereIn($field, $value);
+            } else {
+                $query->where($field, $value);
+            }
+        }
+
+        $data = [];
+
+        // Primary search
+        if (!empty($searchQuery)) {
+            $primaryQuery = clone $query;
+            $primaryResults = $primaryQuery
+                ->where($searchBy1, 'LIKE', "%{$searchQuery}%")
+                ->limit($limit)
+                ->get();
+
+            // Secondary search if needed and specified
+            $secondaryResults = collect();
+            if ($primaryResults->count() < $limit && !empty($searchBy2)) {
+                $secondaryQuery = clone $query;
+                $secondaryResults = $secondaryQuery
+                    ->where($searchBy2, 'LIKE', "%{$searchQuery}%")
+                    ->whereNotIn('id', $primaryResults->pluck('id')->toArray())
+                    ->limit($limit - $primaryResults->count())
+                    ->get();
+            }
+
+            $allResults = $primaryResults->merge($secondaryResults);
+        } else {
+            // No search query, just return filtered results
+            $allResults = $query->limit($limit)->get();
+        }
+
+        // Format the results based on display_format
+        foreach ($allResults as $item) {
+            $formattedItem = formatDropdownItem($item, $displayFormat);
+            if ($formattedItem) {
+                $data[] = $formattedItem;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'meta' => [
+                'total' => count($data),
+                'limit' => $limit,
+                'model' => $modelName,
+                'search_query' => $searchQuery,
+                'filters_applied' => count($conditions)
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('AJAX Dropdown Error: ' . $e->getMessage(), [
+            'model' => $request->get('model'),
+            'query' => $request->get('q'),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while fetching data',
+            'data' => []
+        ], 500);
+    }
+})->name('ajax.dropdown');
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
